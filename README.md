@@ -1,0 +1,6 @@
+## Structure
+
+```txt
+app
+domain
+```
