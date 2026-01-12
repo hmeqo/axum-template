@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use axum_login::{AuthnBackend, UserId};
-use serde::{Deserialize, Serialize};
 
 use crate::{
     domain::{model::UserPrincipal, service::AuthService},
@@ -9,14 +8,14 @@ use crate::{
 };
 
 /// Credentials for user authentication
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Credentials {
     pub username: String,
     pub password: String,
 }
 
 /// Authentication backend for axum-login
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Backend {
     pub auth_service: Arc<AuthService>,
 }

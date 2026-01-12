@@ -1,6 +1,6 @@
+use chrono::Utc;
 use entity::role;
 use sea_orm::ActiveValue::Set;
-use time::OffsetDateTime;
 
 /// Role 领域模型行为扩展
 pub trait RoleExt {
@@ -22,7 +22,7 @@ pub trait RoleActiveModelExt {
 
 impl RoleActiveModelExt for role::ActiveModel {
     fn new_role(name: String, description: Option<String>) -> role::ActiveModel {
-        let now = OffsetDateTime::now_utc();
+        let now = Utc::now().into();
         role::ActiveModel {
             name: Set(name),
             description: Set(description),
@@ -34,11 +34,11 @@ impl RoleActiveModelExt for role::ActiveModel {
 
     fn set_name(&mut self, name: String) {
         self.name = Set(name);
-        self.updated_at = Set(OffsetDateTime::now_utc());
+        self.updated_at = Set(Utc::now().into());
     }
 
     fn set_description(&mut self, description: Option<String>) {
         self.description = Set(description);
-        self.updated_at = Set(OffsetDateTime::now_utc());
+        self.updated_at = Set(Utc::now().into());
     }
 }

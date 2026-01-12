@@ -1,10 +1,10 @@
 use sea_orm::{DatabaseConnection, QueryFilter, entity::prelude::*};
 use std::sync::Arc;
 
-use crate::error::Result;
+use crate::{domain::db::Pk, error::Result};
 use entity::{permission, prelude::*};
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct PermissionRepository {
     pub db: Arc<DatabaseConnection>,
 }
@@ -22,12 +22,12 @@ impl PermissionRepository {
         active_model.update(self.db()).await.map_err(Into::into)
     }
 
-    pub async fn delete_by_id(&self, id: i32) -> Result<()> {
+    pub async fn delete_by_id(&self, id: Pk) -> Result<()> {
         Permission::delete_by_id(id).exec(self.db()).await?;
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<permission::Model>> {
+    pub async fn find_by_id(&self, id: Pk) -> Result<Option<permission::Model>> {
         Permission::find_by_id(id)
             .one(self.db())
             .await
@@ -66,7 +66,7 @@ impl PermissionRepository {
         Permission::find().all(self.db()).await.map_err(Into::into)
     }
 
-    pub async fn list_by_ids(&self, ids: Vec<i32>) -> Result<Vec<permission::Model>> {
+    pub async fn list_by_ids(&self, ids: Vec<Pk>) -> Result<Vec<permission::Model>> {
         if ids.is_empty() {
             return Ok(vec![]);
         }

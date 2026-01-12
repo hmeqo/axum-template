@@ -25,7 +25,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let Path(value) = Path::<T>::from_request_parts(parts, state).await?;
-        value.validate().map_err(AppError::Validation)?;
+        value.validate()?;
         Ok(AppPath(value))
     }
 }
@@ -43,7 +43,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let Query(value) = Query::<T>::from_request_parts(parts, state).await?;
-        value.validate().map_err(AppError::Validation)?;
+        value.validate()?;
         Ok(AppQuery(value))
     }
 }
@@ -61,7 +61,7 @@ where
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let Json(value) = Json::<T>::from_request(req, state).await?;
-        value.validate().map_err(AppError::Validation)?;
+        value.validate()?;
         Ok(AppJson(value))
     }
 }
@@ -97,12 +97,12 @@ where
         // 提取 AuthSession
         let auth_session = AuthSession::from_request_parts(parts, state)
             .await
-            .map_err(|_| AppError::internal("Failed to extract auth session"))?;
+            .map_err(|_| ErrorKind::Internal.with_message("Failed to extract auth session"))?;
 
         let user = auth_session
             .user
             .as_ref()
-            .ok_or(ErrorKind::Unauthenticated)?;
+            .ok_or(ErrorKind::Unauthorized)?;
 
         Ok(RequirePermission(user.clone()))
     }

@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use crate::{
-    domain::{model::UserActiveModelExt, repository::UserRepository},
+    domain::{db::Pk, model::UserActiveModelExt, repository::UserRepository},
     error::{ErrorKind, Result},
     util::password,
 };
 use entity::user;
 
 /// User CRUD service
+#[derive(Debug)]
 pub struct UserService {
     pub repo: Arc<UserRepository>,
 }
@@ -16,9 +17,7 @@ impl UserService {
     /// Create a new user
     pub async fn create(&self, username: String, password: String) -> Result<user::Model> {
         if self.repo.exists_by_username(&username).await? {
-            return Err(ErrorKind::Exists
-                .with_detail("Username already exists")
-                .into());
+            return Err(ErrorKind::AlreadyExists.with_message("Username already exists"));
         }
 
         let hashed = password::hash(&password)?;
@@ -28,16 +27,16 @@ impl UserService {
     }
 
     /// Find user by ID
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<user::Model>> {
+    pub async fn find_by_id(&self, id: Pk) -> Result<Option<user::Model>> {
         self.repo.find_by_id(id).await
     }
 
     /// Get user by ID or return not found
-    pub async fn get_by_id(&self, id: i32) -> Result<user::Model> {
+    pub async fn get_by_id(&self, id: Pk) -> Result<user::Model> {
         self.repo
             .find_by_id(id)
             .await?
-            .ok_or_else(|| ErrorKind::NotFound.with_detail("User not found").into())
+            .ok_or_else(|| ErrorKind::NotFound.with_message("User not found"))
     }
 
     /// Find user by username
@@ -46,7 +45,7 @@ impl UserService {
     }
 
     /// Check if user exists by ID
-    pub async fn exists(&self, id: i32) -> Result<bool> {
+    pub async fn exists(&self, id: Pk) -> Result<bool> {
         Ok(self.find_by_id(id).await?.is_some())
     }
 
@@ -66,13 +65,11 @@ impl UserService {
     }
 
     /// Update username
-    pub async fn update_username(&self, id: i32, new_username: String) -> Result<user::Model> {
+    pub async fn update_username(&self, id: Pk, new_username: String) -> Result<user::Model> {
         let user = self.get_by_id(id).await?;
 
         if new_username != user.username && self.exists_by_username(&new_username).await? {
-            return Err(ErrorKind::Conflict
-                .with_detail("Username already exists")
-                .into());
+            return Err(ErrorKind::AlreadyExists.with_message("Username already exists"));
         }
 
         let mut active: user::ActiveModel = user.into();
@@ -84,16 +81,14 @@ impl UserService {
     /// Change user password requiring current password match
     pub async fn change_password(
         &self,
-        id: i32,
+        id: Pk,
         old_password: &str,
         new_password: &str,
     ) -> Result<()> {
         let user = self.get_by_id(id).await?;
 
         if !password::verify(old_password, &user.password)? {
-            return Err(ErrorKind::Unauthenticated
-                .with_detail("Invalid old password")
-                .into());
+            return Err(ErrorKind::InvalidCredentials.with_message("Invalid old password"));
         }
 
         let hashed = password::hash(new_password)?;
@@ -104,7 +99,7 @@ impl UserService {
     }
 
     /// Reset password without verifying current password
-    pub async fn reset_password(&self, id: i32, new_password: &str) -> Result<()> {
+    pub async fn reset_password(&self, id: Pk, new_password: &str) -> Result<()> {
         let user = self.get_by_id(id).await?;
 
         let hashed = password::hash(new_password)?;
@@ -115,7 +110,7 @@ impl UserService {
     }
 
     /// Delete user by ID
-    pub async fn delete(&self, id: i32) -> Result<()> {
+    pub async fn delete(&self, id: Pk) -> Result<()> {
         self.repo.delete_by_id(id).await
     }
 }

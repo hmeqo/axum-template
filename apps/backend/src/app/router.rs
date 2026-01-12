@@ -1,4 +1,5 @@
 use axum::Router;
+use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use utoipa_axum::router::OpenApiRouter;
@@ -8,15 +9,17 @@ use utoipa_swagger_ui::SwaggerUi;
 use super::route;
 use crate::{
     app::{AppState, middleware},
+    config::AppConfig,
     error::Result,
+    ext::PathRouterT,
 };
 
 /// Create the application router with all routes and middleware
 pub async fn create_router(state: AppState) -> Result<Router> {
     let router = OpenApiRouter::new()
-        .merge(route::auth::router())
         .merge(route::chore::router())
-        .nest("/users", route::user::router());
+        .mount(route::auth::router())
+        .mount(route::user::router());
 
     let (router, api) = OpenApiRouter::new().nest("/api", router).split_for_parts();
 
@@ -30,4 +33,12 @@ pub async fn create_router(state: AppState) -> Result<Router> {
                 .layer(middleware::cors::cors()),
         )
         .with_state(state))
+}
+
+/// Create TCP listener for the server
+pub async fn create_listener(config: &AppConfig) -> Result<TcpListener> {
+    let addr = format!("{}:{}", config.server.host, config.server.port);
+    let listener = TcpListener::bind(&addr).await?;
+    tracing::info!("Server listening on {}", addr);
+    Ok(listener)
 }

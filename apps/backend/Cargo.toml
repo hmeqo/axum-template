@@ -4,50 +4,41 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.100"
-argon2 = "0.5"
-axum = { version = "0.8.7", features = ["ws", "macros"] }
-axum-extra = { version = "0.9", features = ["cookie"] }
-axum-valid = { version = "0.24.0", features = ["validator", "into_json"] }
-clap = { version = "4.5", features = ["derive"] }
-password-hash = "0.5"
-rand = "0.8"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0"
-strum = { version = "0.26", features = ["derive"] }
-tokio = { version = "1.48.0", features = ["full"] }
-tower = "0.5.2"
-tower-http = { version = "0.6", features = ["cors", "trace"] }
-tower-sessions = { version = "0.14" }
-axum-login = "0.18.0"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "ansi"] }
-tracing-appender = "0.2"
-config = { version = "0.15", features = ["toml"] }
-thiserror = "2.0"
-uuid = { version = "1.0", features = ["v4", "serde"] }
-sea-orm = { version = "1.1", features = [
-    "sqlx-sqlite",
-    "sqlx-postgres",
-    "runtime-tokio-rustls",
-    "macros",
-    "with-time",
-    "with-uuid",
-] }
-dotenvy = { version = "0.15.7" }
-bon = "3.8.1"
-inquire = "0.9.1"
-utoipa-axum = "0.2.0"
-utoipa = { version = "5.4.0", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
-utoipa-scalar = { version = "0.3.0", features = ["axum"] }
-validator = { version = "0.20.0", features = ["derive"] }
-time = { version = "0.3.44", features = ["serde-well-known", "serde-human-readable"] }
-tower-sessions-seaorm-store = { version = "0.1.1", features = ["sqlite", "postgres"] }
-async-trait = "0.1"
+entity = { workspace = true }
+migration = { workspace = true }
 
-[dependencies.entity]
-path = "../../crates/entity"
-
-[dependencies.migration]
-path = "../../crates/migration"
+anyhow = { workspace = true }
+argon2 = { workspace = true }
+async-trait = { workspace = true }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+axum-login = { workspace = true }
+axum-valid = { workspace = true }
+bon = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+config = { workspace = true }
+dotenvy = { workspace = true }
+inquire = { workspace = true }
+password-hash = { workspace = true }
+rand = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tower-sessions = { workspace = true }
+tower-sessions-seaorm-store = { workspace = true }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true }
+utoipa = { workspace = true }
+utoipa-axum = { workspace = true }
+utoipa-scalar = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+uuid = { workspace = true }
+validator = { workspace = true }

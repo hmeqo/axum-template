@@ -12,7 +12,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(User::Table)
                     .if_not_exists()
-                    .col(pk_auto(User::Id))
+                    .col(pk_auto(User::Id).big_integer())
                     .col(string(User::Username))
                     .col(string(User::Password))
                     .col(
@@ -33,7 +33,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Role::Table)
                     .if_not_exists()
-                    .col(pk_auto(Role::Id))
+                    .col(pk_auto(Role::Id).big_integer())
                     .col(string_uniq(Role::Name))
                     .col(string_null(Role::Description))
                     .col(
@@ -54,7 +54,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Permission::Table)
                     .if_not_exists()
-                    .col(pk_auto(Permission::Id))
+                    .col(pk_auto(Permission::Id).big_integer())
                     .col(string(Permission::Resource))
                     .col(string(Permission::Action))
                     .col(string_null(Permission::Description))
@@ -85,9 +85,9 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(RolePermission::Table)
                     .if_not_exists()
-                    .col(pk_auto(RolePermission::Id))
-                    .col(integer(RolePermission::RoleId))
-                    .col(integer(RolePermission::PermissionId))
+                    .col(pk_auto(RolePermission::Id).big_integer())
+                    .col(big_integer(RolePermission::RoleId))
+                    .col(big_integer(RolePermission::PermissionId))
                     .col(
                         timestamp_with_time_zone(RolePermission::CreatedAt)
                             .default(Expr::current_timestamp()),
@@ -129,9 +129,9 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(UserRole::Table)
                     .if_not_exists()
-                    .col(pk_auto(UserRole::Id))
-                    .col(integer(UserRole::UserId))
-                    .col(integer(UserRole::RoleId))
+                    .col(pk_auto(UserRole::Id).big_integer())
+                    .col(big_integer(UserRole::UserId))
+                    .col(big_integer(UserRole::RoleId))
                     .col(
                         timestamp_with_time_zone(UserRole::CreatedAt)
                             .default(Expr::current_timestamp()),

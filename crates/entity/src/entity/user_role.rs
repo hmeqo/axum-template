@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "user_role")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: i32,
-    pub user_id: i32,
-    pub role_id: i32,
-    pub created_at: TimeDateTimeWithTimeZone,
+    pub id: i64,
+    pub user_id: i64,
+    pub role_id: i64,
+    pub created_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

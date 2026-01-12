@@ -1,10 +1,10 @@
 use sea_orm::{DatabaseConnection, QueryFilter, entity::prelude::*};
 use std::sync::Arc;
 
-use crate::error::Result;
+use crate::{domain::db::Pk, error::Result};
 use entity::{prelude::*, user};
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct UserRepository {
     pub db: Arc<DatabaseConnection>,
 }
@@ -25,7 +25,7 @@ impl UserRepository {
     }
 
     /// Delete a user by ID
-    pub async fn delete_by_id(&self, id: i32) -> Result<()> {
+    pub async fn delete_by_id(&self, id: Pk) -> Result<()> {
         User::delete_by_id(id).exec(self.db()).await?;
         Ok(())
     }
@@ -40,7 +40,7 @@ impl UserRepository {
     }
 
     /// Find a user by ID
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<user::Model>> {
+    pub async fn find_by_id(&self, id: Pk) -> Result<Option<user::Model>> {
         User::find_by_id(id)
             .one(self.db())
             .await

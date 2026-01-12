@@ -1,6 +1,6 @@
+use chrono::Utc;
 use entity::user;
 use sea_orm::ActiveValue::Set;
-use time::OffsetDateTime;
 
 /// User 领域模型行为扩展
 pub trait UserExt {}
@@ -21,7 +21,7 @@ impl UserExt for user::Model {}
 
 impl UserActiveModelExt for user::ActiveModel {
     fn new_user(username: String, password_hash: String) -> user::ActiveModel {
-        let now = OffsetDateTime::now_utc();
+        let now = Utc::now().into();
         user::ActiveModel {
             username: Set(username),
             password: Set(password_hash),
@@ -33,11 +33,11 @@ impl UserActiveModelExt for user::ActiveModel {
 
     fn set_password(&mut self, password_hash: String) {
         self.password = Set(password_hash);
-        self.updated_at = Set(OffsetDateTime::now_utc());
+        self.updated_at = Set(Utc::now().into());
     }
 
     fn set_username(&mut self, username: String) {
         self.username = Set(username);
-        self.updated_at = Set(OffsetDateTime::now_utc());
+        self.updated_at = Set(Utc::now().into());
     }
 }

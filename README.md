@@ -1,6 +1,0 @@
-## Structure
-
-```txt
-app
-domain
-```

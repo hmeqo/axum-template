@@ -14,7 +14,7 @@ use crate::{
     error::Result,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Repos {
     pub user: Arc<UserRepository>,
     pub role: Arc<RoleRepository>,
@@ -51,7 +51,7 @@ impl Repos {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Services {
     pub user: Arc<UserService>,
     pub auth: Arc<AuthService>,
@@ -86,7 +86,7 @@ impl Services {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Domain {
     pub db: Arc<DatabaseConnection>,
     pub repos: Repos,

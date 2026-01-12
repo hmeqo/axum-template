@@ -1,10 +1,11 @@
 use sea_orm::{DatabaseConnection, QueryFilter, entity::prelude::*};
 use std::sync::Arc;
 
-use crate::error::Result;
+use crate::{domain::db::Pk, error::Result};
 use entity::{prelude::*, role};
 
 /// 角色 CRUD 操作
+#[derive(Debug)]
 pub struct RoleRepository {
     pub db: Arc<DatabaseConnection>,
 }
@@ -22,12 +23,12 @@ impl RoleRepository {
         active_model.update(self.db()).await.map_err(Into::into)
     }
 
-    pub async fn delete_by_id(&self, id: i32) -> Result<()> {
+    pub async fn delete_by_id(&self, id: Pk) -> Result<()> {
         Role::delete_by_id(id).exec(self.db()).await?;
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<role::Model>> {
+    pub async fn find_by_id(&self, id: Pk) -> Result<Option<role::Model>> {
         Role::find_by_id(id)
             .one(self.db())
             .await
@@ -62,7 +63,7 @@ impl RoleRepository {
         Role::find().count(self.db()).await.map_err(Into::into)
     }
 
-    pub async fn find_by_ids(&self, ids: Vec<i32>) -> Result<Vec<role::Model>> {
+    pub async fn find_by_ids(&self, ids: Vec<Pk>) -> Result<Vec<role::Model>> {
         if ids.is_empty() {
             return Ok(vec![]);
         }

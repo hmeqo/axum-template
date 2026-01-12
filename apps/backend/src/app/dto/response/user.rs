@@ -1,17 +1,17 @@
+use chrono::{DateTime, FixedOffset};
 use serde::Serialize;
-use time::OffsetDateTime;
 use utoipa::ToSchema;
+
+use crate::domain::db::Pk;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
-    pub id: i32,
+    pub id: Pk,
     pub username: String,
     #[schema(value_type = String)]
-    #[serde(with = "time::serde::iso8601")]
-    pub created_at: OffsetDateTime,
+    pub created_at: DateTime<FixedOffset>,
     #[schema(value_type = String)]
-    #[serde(with = "time::serde::iso8601")]
-    pub updated_at: OffsetDateTime,
+    pub updated_at: DateTime<FixedOffset>,
 }
 
 impl From<entity::user::Model> for UserResponse {

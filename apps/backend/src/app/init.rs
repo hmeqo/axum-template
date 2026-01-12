@@ -1,10 +1,19 @@
 use crate::{
-    app::AppState, config::AppConfig, domain::Domain, error::Result, logging::init_tracing,
+    app::{
+        AppState,
+        router::{create_listener, create_router},
+    },
+    config::AppConfig,
+    domain::Domain,
+    error::Result,
+    infra::logging::init_tracing,
 };
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct AppBootstrap {
     pub config: AppConfig,
+    pub domain: Option<Domain>,
+    pub app_state: Option<AppState>,
 }
 
 impl AppBootstrap {
@@ -12,21 +21,34 @@ impl AppBootstrap {
         let _ = dotenvy::dotenv();
 
         let config = AppConfig::load()?;
-        Ok(Self { config })
+        Ok(Self {
+            config,
+            domain: None,
+            app_state: None,
+        })
     }
 
     pub fn init_tracing(&self) {
         init_tracing(&self.config.log);
     }
 
-    pub async fn build_domain(&self) -> Result<Domain> {
-        Domain::from_config(&self.config).await
+    pub async fn init_domain(&mut self) -> Result<()> {
+        self.domain = Some(Domain::from_config(&self.config).await?);
+        Ok(())
     }
 
-    pub fn build_app_state(&self, domain: Domain) -> Result<AppState> {
-        Ok(AppState {
+    pub fn init_app_state(&mut self) {
+        self.app_state = Some(AppState {
             config: self.config.clone(),
-            domain,
-        })
+            domain: self.domain.take().unwrap(),
+        });
+    }
+
+    pub async fn create_listener(&self) -> Result<tokio::net::TcpListener> {
+        create_listener(&self.config).await
+    }
+
+    pub async fn create_router(&mut self) -> Result<axum::Router> {
+        create_router(self.app_state.take().unwrap()).await
     }
 }

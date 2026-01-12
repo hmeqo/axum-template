@@ -8,6 +8,7 @@ use crate::{
         helper::auth::{AuthSession, Credentials},
     },
     error::{AppError, ErrorKind, ErrorResponse},
+    ext::{EndpointRouter, OpenApiRouterExt, PathRouterT},
 };
 
 #[utoipa::path(post, path="/login", request_body = LoginRequest, responses(
@@ -25,16 +26,18 @@ pub async fn login(
             password: payload.password,
         })
         .await
-        .map_err(AppError::wrap)?
+        .map_err(ErrorKind::wrap_internal)?
         .ok_or(ErrorKind::InvalidCredentials)?;
 
     auth_session
         .login(&user_with_roles)
         .await
-        .map_err(AppError::wrap)?;
+        .map_err(ErrorKind::wrap_internal)?;
 
     let response = LoginResponse {
-        user: UserResponse::from(user_with_roles.user),
+        state: AuthStateResponse {
+            user: UserResponse::from(user_with_roles.user),
+        },
     };
 
     Ok(Json(response))
@@ -47,10 +50,13 @@ pub async fn login(
 pub async fn logout(mut auth_session: AuthSession) -> Result<impl IntoResponse, AppError> {
     // Check if user is logged in
     if auth_session.user.is_none() {
-        return Err(ErrorKind::Unauthenticated.into());
+        return Err(ErrorKind::Unauthorized.into());
     }
 
-    auth_session.logout().await.map_err(AppError::wrap)?;
+    auth_session
+        .logout()
+        .await
+        .map_err(ErrorKind::wrap_internal)?;
 
     let response = MessageResponse {
         message: "Logged out successfully".to_string(),
@@ -60,21 +66,23 @@ pub async fn logout(mut auth_session: AuthSession) -> Result<impl IntoResponse, 
 }
 
 #[utoipa::path(get, path="/me", responses(
-    (status = 200, body = CurrentUserResponse),
+    (status = 200, body = AuthStateResponse),
     (status = 400, body = ErrorResponse),
 ))]
 pub async fn me(auth_session: AuthSession) -> Result<impl IntoResponse, AppError> {
-    let user_with_roles = auth_session.user.ok_or(ErrorKind::Unauthenticated)?;
+    let user_with_roles = auth_session.user.ok_or(ErrorKind::Unauthorized)?;
 
-    let response = CurrentUserResponse {
+    let response = AuthStateResponse {
         user: UserResponse::from(user_with_roles.user),
     };
     Ok(Json(response))
 }
 
-pub fn router() -> OpenApiRouter<AppState> {
+pub fn router() -> EndpointRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes![login])
         .routes(routes![logout])
         .routes(routes![me])
+        .with_tags(vec!["auth"])
+        .endpoint("/auth")
 }

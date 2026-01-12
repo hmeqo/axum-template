@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     domain::{
+        db::Pk,
         model::{Permission, PermissionExt, RoleActiveModelExt},
         repository::{
             PermissionRepository, RolePermissionRepository, RoleRepository, UserRoleRepository,
@@ -12,6 +13,7 @@ use crate::{
 use entity::{permission, role};
 
 /// Role CRUD service
+#[derive(Debug)]
 pub struct RoleService {
     pub role_repo: Arc<RoleRepository>,
     pub permission_repo: Arc<PermissionRepository>,
@@ -23,9 +25,7 @@ impl RoleService {
     /// Create a new role
     pub async fn create(&self, name: String, description: Option<String>) -> Result<role::Model> {
         if self.role_repo.exists_by_name(&name).await? {
-            return Err(ErrorKind::Exists
-                .with_detail("Role already exists")
-                .into());
+            return Err(ErrorKind::AlreadyExists.with_message("Role already exists"));
         }
 
         let active = role::ActiveModel::new_role(name, description);
@@ -33,16 +33,16 @@ impl RoleService {
     }
 
     /// Find role by ID
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<role::Model>> {
+    pub async fn find_by_id(&self, id: Pk) -> Result<Option<role::Model>> {
         self.role_repo.find_by_id(id).await
     }
 
     /// Get role by ID or return not found
-    pub async fn get_by_id(&self, id: i32) -> Result<role::Model> {
+    pub async fn get_by_id(&self, id: Pk) -> Result<role::Model> {
         self.role_repo
             .find_by_id(id)
             .await?
-            .ok_or_else(|| ErrorKind::NotFound.with_detail("Role not found").into())
+            .ok_or(ErrorKind::NotFound.with_message("Role not found"))
     }
 
     /// Find role by name
@@ -71,13 +71,11 @@ impl RoleService {
     }
 
     /// Update role name
-    pub async fn update_name(&self, id: i32, new_name: String) -> Result<role::Model> {
+    pub async fn update_name(&self, id: Pk, new_name: String) -> Result<role::Model> {
         let current = self.get_by_id(id).await?;
 
         if new_name != current.name && self.exists_by_name(&new_name).await? {
-            return Err(ErrorKind::Conflict
-                .with_detail("Role name already exists")
-                .into());
+            return Err(ErrorKind::AlreadyExists.with_message("Role name already exists"));
         }
 
         let mut active: role::ActiveModel = current.into();
@@ -89,7 +87,7 @@ impl RoleService {
     /// Update role description
     pub async fn update_description(
         &self,
-        id: i32,
+        id: Pk,
         description: Option<String>,
     ) -> Result<role::Model> {
         let current = self.get_by_id(id).await?;
@@ -101,36 +99,36 @@ impl RoleService {
     }
 
     /// Delete role by ID
-    pub async fn delete(&self, id: i32) -> Result<()> {
+    pub async fn delete(&self, id: Pk) -> Result<()> {
         let _ = self.get_by_id(id).await?;
         self.role_repo.delete_by_id(id).await
     }
 
     /// Add permission to role
-    pub async fn add_permission(&self, role_id: i32, perm_id: i32) -> Result<()> {
+    pub async fn add_permission(&self, role_id: Pk, perm_id: Pk) -> Result<()> {
         let _ = self.get_by_id(role_id).await?;
 
         self.permission_repo
             .find_by_id(perm_id)
             .await?
-            .ok_or_else(|| ErrorKind::NotFound.with_detail("Permission not found"))?;
+            .ok_or_else(|| ErrorKind::NotFound.with_message("Permission not found"))?;
 
         if self.role_permission_repo.exists(role_id, perm_id).await? {
-            return Err(ErrorKind::Conflict
-                .with_detail("Permission already assigned to role")
-                .into());
+            return Err(
+                ErrorKind::AlreadyExists.with_message("Permission already assigned to role")
+            );
         }
 
         self.role_permission_repo.assign(role_id, perm_id).await
     }
 
     /// Remove permission from role
-    pub async fn remove_permission(&self, role_id: i32, perm_id: i32) -> Result<()> {
+    pub async fn remove_permission(&self, role_id: Pk, perm_id: Pk) -> Result<()> {
         self.role_permission_repo.remove(role_id, perm_id).await
     }
 
     /// Get all permissions for a role
-    pub async fn get_permissions(&self, role_id: i32) -> Result<Vec<permission::Model>> {
+    pub async fn get_permissions(&self, role_id: Pk) -> Result<Vec<permission::Model>> {
         let ids = self
             .role_permission_repo
             .permission_ids_for_role(role_id)
@@ -139,7 +137,7 @@ impl RoleService {
     }
 
     /// Check if role has a specific permission
-    pub async fn has_permission(&self, role_id: i32, perm: Permission) -> Result<bool> {
+    pub async fn has_permission(&self, role_id: Pk, perm: Permission) -> Result<bool> {
         Ok(self
             .get_permissions(role_id)
             .await?
@@ -148,29 +146,27 @@ impl RoleService {
     }
 
     /// Assign role to user
-    pub async fn assign_to_user(&self, user_id: i32, role_id: i32) -> Result<()> {
+    pub async fn assign_to_user(&self, user_id: Pk, role_id: Pk) -> Result<()> {
         let _ = self.get_by_id(role_id).await?;
         if self.user_role_repo.exists(user_id, role_id).await? {
-            return Err(ErrorKind::Conflict
-                .with_detail("Role already assigned to user")
-                .into());
+            return Err(ErrorKind::AlreadyExists.with_message("Role already assigned to user"));
         }
         self.user_role_repo.assign(user_id, role_id).await
     }
 
     /// Remove role from user
-    pub async fn remove_from_user(&self, user_id: i32, role_id: i32) -> Result<()> {
+    pub async fn remove_from_user(&self, user_id: Pk, role_id: Pk) -> Result<()> {
         self.user_role_repo.remove(user_id, role_id).await
     }
 
     /// Get all roles for a user
-    pub async fn get_user_roles(&self, user_id: i32) -> Result<Vec<role::Model>> {
+    pub async fn get_user_roles(&self, user_id: Pk) -> Result<Vec<role::Model>> {
         let role_ids = self.user_role_repo.role_ids_for_user(user_id).await?;
         self.role_repo.find_by_ids(role_ids).await
     }
 
     /// Get all permissions for a user (through their roles)
-    pub async fn get_user_permissions(&self, user_id: i32) -> Result<Vec<permission::Model>> {
+    pub async fn get_user_permissions(&self, user_id: Pk) -> Result<Vec<permission::Model>> {
         let roles = self.get_user_roles(user_id).await?;
 
         let mut all_permissions = Vec::new();
@@ -187,7 +183,7 @@ impl RoleService {
     /// Check if user has a specific permission
     pub async fn user_has_permission(
         &self,
-        user_id: i32,
+        user_id: Pk,
         resource: &str,
         action: &str,
     ) -> Result<bool> {

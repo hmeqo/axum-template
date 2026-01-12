@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use crate::{
-    domain::{model::UserPrincipal, service::UserService},
+    domain::{db::Pk, model::UserPrincipal, service::UserService},
     error::Result,
     util::password,
 };
 use entity::user;
 
+#[derive(Debug)]
 pub struct AuthService {
     pub user_service: Arc<UserService>,
 }
@@ -26,7 +27,7 @@ impl AuthService {
         }
     }
 
-    pub async fn get_user(&self, user_id: i32) -> Result<Option<UserPrincipal>> {
+    pub async fn get_user(&self, user_id: Pk) -> Result<Option<UserPrincipal>> {
         self.user_service
             .find_by_id(user_id)
             .await

@@ -1,7 +1,7 @@
+use chrono::Utc;
 use entity::permission;
 use sea_orm::ActiveValue::Set;
 use strum::{AsRefStr, EnumIter, EnumString, IntoStaticStr};
-use time::OffsetDateTime;
 
 /// 系统资源类型枚举
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, EnumIter, AsRefStr, IntoStaticStr)]
@@ -160,7 +160,7 @@ impl From<Permission> for permission::ActiveModel {
             resource: Set(perm.resource_str().to_string()),
             action: Set(perm.action_str().to_string()),
             description: Set(Some(perm.description().to_string())),
-            created_at: Set(OffsetDateTime::now_utc()),
+            created_at: Set(Utc::now().into()),
             ..Default::default()
         }
     }
@@ -207,7 +207,7 @@ impl PermissionActiveModelExt for permission::ActiveModel {
             resource: Set(resource),
             action: Set(action),
             description: Set(description),
-            created_at: Set(OffsetDateTime::now_utc()),
+            created_at: Set(Utc::now().into()),
             ..Default::default()
         }
     }

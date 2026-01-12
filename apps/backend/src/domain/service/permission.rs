@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use crate::{
-    domain::{model::PermissionActiveModelExt, repository::PermissionRepository},
+    domain::{db::Pk, model::PermissionActiveModelExt, repository::PermissionRepository},
     error::{ErrorKind, Result},
 };
 use entity::permission;
 
 /// Permission CRUD service
+#[derive(Debug)]
 pub struct PermissionService {
     pub repo: Arc<PermissionRepository>,
 }
@@ -24,9 +25,7 @@ impl PermissionService {
             .exists_by_resource_action(&resource, &action)
             .await?
         {
-            return Err(ErrorKind::Exists
-                .with_detail("Permission already exists")
-                .into());
+            return Err(ErrorKind::AlreadyExists.with_message("Permission already exists"));
         }
 
         let active = permission::ActiveModel::new_permission(resource, action, description);
@@ -34,17 +33,16 @@ impl PermissionService {
     }
 
     /// Find permission by ID
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<permission::Model>> {
+    pub async fn find_by_id(&self, id: Pk) -> Result<Option<permission::Model>> {
         self.repo.find_by_id(id).await
     }
 
     /// Get permission by ID or return not found
-    pub async fn get_by_id(&self, id: i32) -> Result<permission::Model> {
-        self.repo.find_by_id(id).await?.ok_or_else(|| {
-            ErrorKind::NotFound
-                .with_detail("Permission not found")
-                .into()
-        })
+    pub async fn get_by_id(&self, id: Pk) -> Result<permission::Model> {
+        self.repo
+            .find_by_id(id)
+            .await?
+            .ok_or_else(|| ErrorKind::NotFound.with_message("Permission not found"))
     }
 
     /// Find permission by resource and action
@@ -79,7 +77,7 @@ impl PermissionService {
     /// Update permission description
     pub async fn update_description(
         &self,
-        id: i32,
+        id: Pk,
         description: Option<String>,
     ) -> Result<permission::Model> {
         let perm = self.get_by_id(id).await?;
@@ -91,7 +89,7 @@ impl PermissionService {
     }
 
     /// Delete permission by ID
-    pub async fn delete(&self, id: i32) -> Result<()> {
+    pub async fn delete(&self, id: Pk) -> Result<()> {
         let _ = self.get_by_id(id).await?;
         self.repo.delete_by_id(id).await
     }

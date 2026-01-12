@@ -10,7 +10,7 @@ use tower_sessions_seaorm_store::PostgresStore;
 
 use crate::{
     app::{AppState, helper::auth::Backend},
-    error::{AppError, Result},
+    error::Result,
 };
 
 #[derive(Debug, Clone)]
@@ -23,8 +23,8 @@ impl DynamicSessionStore {
     pub async fn from_config(state: &AppState) -> Result<Self> {
         let url = &state.config.database.url;
         if url.starts_with("postgres://") {
-            let store = PostgresStore::new(state.db.as_ref().clone());
-            store.migrate().await.map_err(AppError::SeaOrmStore)?;
+            let store = PostgresStore::new(state.domain.db.as_ref().clone());
+            store.migrate().await?;
             Ok(Self::Database(store))
         } else {
             Ok(Self::Memory(MemoryStore::default()))
@@ -73,7 +73,7 @@ pub async fn session(state: &AppState) -> Result<AuthManagerLayer<Backend, Dynam
         ));
 
     let backend = Backend {
-        auth_service: Arc::clone(&state.services.auth),
+        auth_service: Arc::clone(&state.services().auth),
     };
 
     Ok(AuthManagerLayerBuilder::new(backend, layer).build())

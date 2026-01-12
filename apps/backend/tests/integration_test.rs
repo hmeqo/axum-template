@@ -4,14 +4,15 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use backend::app::{AppBootstrap, create_router};
+use backend::app::AppBootstrap;
 use serde_json::{Value, json};
 use tower::ServiceExt;
 
 async fn create_router_with_state() -> Result<Router> {
-    let bootstrap = AppBootstrap::load()?;
-    let state = bootstrap.build_app_state(bootstrap.build_domain().await?)?;
-    Ok(create_router(state).await?)
+    let mut bootstrap = AppBootstrap::load()?;
+    bootstrap.init_domain().await?;
+    bootstrap.init_app_state();
+    bootstrap.create_router().await.map_err(Into::into)
 }
 
 #[tokio::test]
@@ -20,7 +21,7 @@ async fn test_root_endpoint() -> Result<()> {
 
     let request = Request::builder()
         .method("GET")
-        .uri("/")
+        .uri("/api")
         .body(Body::empty())
         .unwrap();
 
@@ -36,7 +37,7 @@ async fn test_hello_endpoint() -> Result<()> {
 
     let request = Request::builder()
         .method("POST")
-        .uri("/hello")
+        .uri("/api/hello")
         .header("content-type", "application/json")
         .body(Body::from(json!({"name": "World"}).to_string()))?;
 

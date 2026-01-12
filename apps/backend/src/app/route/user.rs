@@ -10,8 +10,9 @@ use crate::{
             response::*,
         },
     },
-    domain::model::Permission,
+    domain::{db::Pk, model::Permission},
     error::{AppError, ErrorKind, ErrorResponse},
+    ext::{EndpointRouter, OpenApiRouterExt, PathRouterT},
 };
 
 #[utoipa::path(get, path="/", params(
@@ -28,8 +29,8 @@ pub async fn list(
     let page = pagination.page;
     let per_page = pagination.per_page;
 
-    let users = state.services.user.list(page, per_page).await?;
-    let total = state.services.user.count().await?;
+    let users = state.services().user.list(page, per_page).await?;
+    let total = state.services().user.count().await?;
 
     let user_responses = users.into_iter().map(UserResponse::from).collect();
 
@@ -53,13 +54,11 @@ pub async fn create(
     AppJson(payload): AppJson<CreateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     if !user.has_permission(Permission::UserCreate) {
-        return Err(ErrorKind::PermissionDenied
-            .with_detail("Insufficient permissions")
-            .into());
+        return Err(ErrorKind::PermissionDenied.with_message("Insufficient permissions"));
     }
 
     let user = state
-        .services
+        .services()
         .user
         .create(payload.username, payload.password)
         .await?;
@@ -67,30 +66,34 @@ pub async fn create(
     Ok(Json(response))
 }
 
-#[utoipa::path(get, path="/{id}", responses(
+#[utoipa::path(get, path="/{id}", params(
+    ("id" = Pk, Path)
+), responses(
     (status = 200, body = UserResponse),
     (status = 400, body = ErrorResponse),
 ))]
 pub async fn get(
     State(state): State<AppState>,
-    AppPath(AutoIdPath { id }): AppPath<AutoIdPath>,
+    AppPath(PkPath { id }): AppPath<PkPath>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = state.services.user.get_by_id(id).await?;
+    let user = state.services().user.get_by_id(id).await?;
     let response = UserResponse::from(user);
     Ok(Json(response))
 }
 
-#[utoipa::path(put, path="/{id}/username", request_body = UpdateUsernameRequest, responses(
+#[utoipa::path(put, path="/{id}/username", params(
+    ("id" = Pk, Path)
+), request_body = UpdateUsernameRequest, responses(
     (status = 200, body = UserResponse),
     (status = 400, body = ErrorResponse),
 ))]
 pub async fn update_username(
     State(state): State<AppState>,
-    AppPath(AutoIdPath { id }): AppPath<AutoIdPath>,
+    AppPath(PkPath { id }): AppPath<PkPath>,
     Json(payload): Json<UpdateUsernameRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let user = state
-        .services
+        .services()
         .user
         .update_username(id, payload.username)
         .await?;
@@ -98,17 +101,19 @@ pub async fn update_username(
     Ok(Json(response))
 }
 
-#[utoipa::path(put, path="/{id}/password", request_body = ChangePasswordRequest, responses(
+#[utoipa::path(put, path="/{id}/password", params(
+    ("id" = Pk, Path)
+), request_body = ChangePasswordRequest, responses(
     (status = 200, body = MessageResponse),
     (status = 400, body = ErrorResponse),
 ))]
 pub async fn change_password(
     State(state): State<AppState>,
-    AppPath(AutoIdPath { id }): AppPath<AutoIdPath>,
+    AppPath(PkPath { id }): AppPath<PkPath>,
     Json(payload): Json<ChangePasswordRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     state
-        .services
+        .services()
         .user
         .change_password(id, &payload.old_password, &payload.new_password)
         .await?;
@@ -118,22 +123,24 @@ pub async fn change_password(
     Ok(Json(response))
 }
 
-#[utoipa::path(delete, path="/{id}", responses(
+#[utoipa::path(delete, path="/{id}", params(
+    ("id" = Pk, Path)
+), responses(
     (status = 200, body = MessageResponse),
     (status = 400, body = ErrorResponse),
 ))]
 pub async fn delete(
     State(state): State<AppState>,
-    AppPath(AutoIdPath { id }): AppPath<AutoIdPath>,
+    AppPath(PkPath { id }): AppPath<PkPath>,
 ) -> Result<impl IntoResponse, AppError> {
-    state.services.user.delete(id).await?;
+    state.services().user.delete(id).await?;
     let response = MessageResponse {
         message: "User deleted successfully".to_string(),
     };
     Ok(Json(response))
 }
 
-pub fn router() -> OpenApiRouter<AppState> {
+pub fn router() -> EndpointRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes![list])
         .routes(routes![create])
@@ -141,4 +148,6 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes![delete])
         .routes(routes![update_username])
         .routes(routes![change_password])
+        .with_tags(vec!["user"])
+        .endpoint("/users")
 }

@@ -16,7 +16,7 @@ init() {
 generate-entity() {
     dir=crates/entity/src/entity
     rm -r $dir
-    sea-orm-cli generate entity --with-serde both --date-time-crate time -o $dir
+    sea-orm-cli generate entity --with-serde both --date-time-crate chrono -o $dir
 }
 
 dev() {

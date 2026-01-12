@@ -1,6 +1,7 @@
+use time::Duration;
+
 use config::{Config, Environment, File};
 use serde::{Deserialize, Serialize};
-use time::Duration;
 
 use crate::error::Result;
 
@@ -60,7 +61,7 @@ impl Default for DatabaseConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SessionConfig {
-    pub inactivity_timeout: u64,
+    pub inactivity_timeout: i64,
 }
 
 impl Default for SessionConfig {
@@ -73,7 +74,7 @@ impl Default for SessionConfig {
 
 impl SessionConfig {
     pub fn inactivity_timeout(&self) -> Duration {
-        Duration::seconds(self.inactivity_timeout as i64)
+        Duration::seconds(self.inactivity_timeout)
     }
 }
 

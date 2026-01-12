@@ -1,7 +1,7 @@
 //! CLI command implementations
 
 use anyhow::Result;
-use sea_orm::Iterable;
+use strum::IntoEnumIterator;
 
 use crate::domain::{
     Services,

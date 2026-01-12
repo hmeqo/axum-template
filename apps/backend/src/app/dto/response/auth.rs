@@ -1,12 +1,14 @@
 use serde::Serialize;
 use utoipa::ToSchema;
 
+use super::UserResponse;
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LoginResponse {
-    pub user: super::user::UserResponse,
+    pub state: AuthStateResponse,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct CurrentUserResponse {
-    pub user: super::user::UserResponse,
+pub struct AuthStateResponse {
+    pub user: UserResponse,
 }

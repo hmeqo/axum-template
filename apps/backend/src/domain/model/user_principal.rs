@@ -2,6 +2,8 @@ use axum_login::AuthUser;
 use entity::{permission, role, user};
 use serde::{Deserialize, Serialize};
 
+use crate::domain::db::Pk;
+
 use super::{Permission, PermissionExt};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -12,7 +14,7 @@ pub struct UserPrincipal {
 }
 
 impl AuthUser for UserPrincipal {
-    type Id = i32;
+    type Id = Pk;
 
     fn id(&self) -> Self::Id {
         self.user.id
