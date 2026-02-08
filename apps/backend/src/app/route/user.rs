@@ -4,15 +4,13 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 use crate::{
     app::{
         AppState,
-        dto::{
-            extractor::{AppJson, AppPath, AppQuery, RequirePermission},
-            request::*,
-            response::*,
-        },
+        dto::{request::*, response::*},
+        helper::extractor::{AppJson, AppPath, AppQuery, RequirePermission},
+        response::ErrorResponse,
     },
     domain::{db::Pk, model::Permission},
-    error::{AppError, ErrorKind, ErrorResponse},
-    ext::{EndpointRouter, OpenApiRouterExt, PathRouterT},
+    error::{AppError, ErrorKind},
+    ext::{EndpointRouter, EndpointRouterT, OpenApiRouterExt},
 };
 
 #[utoipa::path(get, path="/", params(

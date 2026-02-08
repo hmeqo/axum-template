@@ -39,13 +39,13 @@ pub fn set_tags(openapi: &mut OpenApi, tags: Vec<String>) {
 /// (Endpoint, OpenApiRouter)
 pub struct EndpointRouter<S>(pub &'static str, pub OpenApiRouter<S>);
 
-pub trait PathRouterT<S> {
+pub trait EndpointRouterT<S> {
     fn mount(self, pr: EndpointRouter<S>) -> Self;
 
     fn endpoint(self, endpoint: &'static str) -> EndpointRouter<S>;
 }
 
-impl<S: Send + Sync + Clone + 'static> PathRouterT<S> for OpenApiRouter<S> {
+impl<S: Send + Sync + Clone + 'static> EndpointRouterT<S> for OpenApiRouter<S> {
     fn mount(self, pr: EndpointRouter<S>) -> Self {
         self.nest(pr.0, pr.1)
     }

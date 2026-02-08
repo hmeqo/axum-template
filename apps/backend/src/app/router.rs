@@ -11,7 +11,7 @@ use crate::{
     app::{AppState, middleware},
     config::AppConfig,
     error::Result,
-    ext::PathRouterT,
+    ext::EndpointRouterT,
 };
 
 /// Create the application router with all routes and middleware

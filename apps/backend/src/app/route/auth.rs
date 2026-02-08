@@ -4,11 +4,15 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 use crate::{
     app::{
         AppState,
-        dto::{extractor::AppJson, request::*, response::*},
-        helper::auth::{AuthSession, Credentials},
+        dto::{request::*, response::*},
+        helper::{
+            auth::{AuthSession, Credentials},
+            extractor::AppJson,
+        },
+        response::ErrorResponse,
     },
-    error::{AppError, ErrorKind, ErrorResponse},
-    ext::{EndpointRouter, OpenApiRouterExt, PathRouterT},
+    error::{AppError, ErrorKind},
+    ext::{EndpointRouter, EndpointRouterT, OpenApiRouterExt},
 };
 
 #[utoipa::path(post, path="/login", request_body = LoginRequest, responses(

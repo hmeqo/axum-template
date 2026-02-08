@@ -1,17 +1,13 @@
 use std::fmt::{Debug, Display};
 
 use axum::{
-    Json,
     extract::rejection::{JsonRejection, PathRejection, QueryRejection},
     http::StatusCode,
-    response::{IntoResponse, Response},
 };
-use serde::Serialize;
 use serde_json::Value;
 use strum::{EnumString, IntoStaticStr};
 use thiserror::Error;
 use tower_sessions_seaorm_store::SeaOrmStoreError;
-use utoipa::ToSchema;
 use validator::ValidationErrors;
 
 type AnyError = dyn std::error::Error + Send + Sync + 'static;
@@ -251,34 +247,4 @@ register_errors! {
     QueryRejection      => ErrorKind::InvalidParameter;
     JsonRejection       => ErrorKind::DataParse;
     ValidationErrors    => ErrorKind::ValidationFailed;
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ErrorResponse {
-    code: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    detail: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    errors: Option<Value>,
-}
-
-impl ErrorResponse {
-    pub fn from_error(error: &AppError) -> Self {
-        Self {
-            code: error.code().into(),
-            detail: Some(error.message().into()),
-            errors: error.errors(),
-        }
-    }
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        if self.kind.is_internal_error() {
-            self.trace_source();
-        }
-        let status_code = self.kind.status_code();
-        let response = ErrorResponse::from_error(&self);
-        (status_code, Json(response)).into_response()
-    }
 }

@@ -25,6 +25,6 @@ pub async fn hello(
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
-        .routes(routes!(index))
-        .routes(routes!(hello))
+        .routes(routes![index])
+        .routes(routes![hello])
 }
