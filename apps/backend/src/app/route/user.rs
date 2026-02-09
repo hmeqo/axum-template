@@ -146,6 +146,6 @@ pub fn router() -> EndpointRouter<AppState> {
         .routes(routes![delete])
         .routes(routes![update_username])
         .routes(routes![change_password])
-        .with_tags(vec!["user"])
+        .with_tags(["user"])
         .endpoint("/users")
 }

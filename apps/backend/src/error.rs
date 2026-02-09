@@ -90,25 +90,13 @@ impl ErrorKind {
     pub fn is_internal_error(&self) -> bool {
         matches!(self, Self::Config | Self::Internal)
     }
-}
 
-impl ErrorKind {
     pub fn to_error(self) -> AppError {
-        AppError {
-            kind: self,
-            message: None,
-            errors: None,
-            source: None,
-        }
+        AppError::new(self)
     }
 
     pub fn with_message(self, msg: impl Into<String>) -> AppError {
-        AppError {
-            kind: self,
-            message: Some(msg.into()),
-            errors: None,
-            source: None,
-        }
+        AppError::new(self).with_message(msg)
     }
 
     /// Wraps any error into an AppError of this kind
@@ -116,12 +104,7 @@ impl ErrorKind {
     where
         E: std::error::Error + Send + Sync + 'static,
     {
-        AppError {
-            kind: self,
-            message: None,
-            errors: None,
-            source: Some(Box::new(err)),
-        }
+        AppError::new(self).with_source(err)
     }
 
     /// Wraps any error into an AppError of this kind with a custom message
@@ -129,19 +112,14 @@ impl ErrorKind {
     where
         E: std::error::Error + Send + Sync + 'static,
     {
-        AppError {
-            kind: self,
-            message: Some(msg.into()),
-            errors: None,
-            source: Some(Box::new(err)),
-        }
+        AppError::new(self).with_message(msg).with_source(err)
     }
 
-    pub fn wrap_internal<E>(e: E) -> AppError
+    pub fn wrap_internal<E>(err: E) -> AppError
     where
         E: std::error::Error + Send + Sync + 'static,
     {
-        ErrorKind::Internal.with_error(e)
+        Self::Internal.with_error(err)
     }
 }
 
@@ -158,6 +136,28 @@ pub struct AppError {
 }
 
 impl AppError {
+    fn new(kind: ErrorKind) -> Self {
+        Self {
+            kind,
+            message: None,
+            errors: None,
+            source: None,
+        }
+    }
+
+    fn with_message(mut self, msg: impl Into<String>) -> Self {
+        self.message = Some(msg.into());
+        self
+    }
+
+    fn with_source<E>(mut self, err: E) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        self.source = Some(Box::new(err));
+        self
+    }
+
     pub fn kind(&self) -> &ErrorKind {
         &self.kind
     }
@@ -181,11 +181,13 @@ impl AppError {
             return Some(errors.clone());
         }
         let err = self.source.as_ref()?;
-        err.downcast_ref::<ValidationErrors>()
-            .map(|err| serde_json::to_value(err).unwrap_or(Value::Null))
-            .or(err
-                .downcast_ref::<PathRejection>()
-                .map(|err| Value::String(err.to_string())))
+        if let Some(v) = err.downcast_ref::<ValidationErrors>() {
+            return Some(serde_json::to_value(v).unwrap_or(Value::Null));
+        }
+        if let Some(p) = err.downcast_ref::<PathRejection>() {
+            return Some(Value::String(p.to_string()));
+        }
+        None
     }
 
     pub fn trace_source(&self) {

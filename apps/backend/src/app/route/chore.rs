@@ -1,9 +1,12 @@
 use axum::{Json, extract::State, response::IntoResponse};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
-use crate::app::{
-    AppState,
-    dto::{request::*, response::*},
+use crate::{
+    app::{
+        AppState,
+        dto::{request::*, response::*},
+    },
+    ext::OpenApiRouterExt,
 };
 
 #[utoipa::path(get, path = "/")]
@@ -27,4 +30,5 @@ pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes![index])
         .routes(routes![hello])
+        .with_tags(["chore"])
 }

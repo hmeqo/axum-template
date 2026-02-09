@@ -87,6 +87,6 @@ pub fn router() -> EndpointRouter<AppState> {
         .routes(routes![login])
         .routes(routes![logout])
         .routes(routes![me])
-        .with_tags(vec!["auth"])
+        .with_tags(["auth"])
         .endpoint("/auth")
 }

@@ -4,11 +4,11 @@ use utoipa_axum::router::OpenApiRouter;
 use crate::app::AppState;
 
 pub trait OpenApiRouterExt {
-    fn with_tags(self, tags: Vec<impl Into<String>>) -> Self;
+    fn with_tags<T: Into<String>>(self, tags: impl IntoIterator<Item = T>) -> Self;
 }
 
 impl OpenApiRouterExt for OpenApiRouter<AppState> {
-    fn with_tags(mut self, tags: Vec<impl Into<String>>) -> Self {
+    fn with_tags<T: Into<String>>(mut self, tags: impl IntoIterator<Item = T>) -> Self {
         set_tags(
             self.get_openapi_mut(),
             tags.into_iter().map(|t| t.into()).collect(),
