@@ -5,10 +5,10 @@ use crate::{
     app::{
         AppState,
         dto::{request::*, response::*},
-        helper::extractor::{AppJson, AppPath, AppQuery, RequirePermission},
-        response::ErrorResponse,
+        error::ErrorResponse,
+        helper::extractor::{AppJson, AppPath, AppQuery, AuthedUser},
     },
-    domain::{db::Pk, model::Permission},
+    domain::{db::Pk, model::Perm},
     error::{AppError, ErrorKind},
     ext::{EndpointRouter, EndpointRouterT, OpenApiRouterExt},
 };
@@ -47,11 +47,11 @@ pub async fn list(
     (status = 400, body = ErrorResponse),
 ))]
 pub async fn create(
-    RequirePermission(user): RequirePermission,
+    AuthedUser(user): AuthedUser,
     State(state): State<AppState>,
     AppJson(payload): AppJson<CreateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    if !user.has_permission(Permission::UserCreate) {
+    if !user.has_permission(Perm::UserWrite).await {
         return Err(ErrorKind::PermissionDenied.with_message("Insufficient permissions"));
     }
 

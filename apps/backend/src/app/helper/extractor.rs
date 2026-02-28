@@ -8,7 +8,7 @@ use validator::Validate;
 
 use crate::{
     app::helper::auth::AuthSession,
-    domain::model::{Permission, UserPrincipal},
+    domain::model::UserPrincipal,
     error::{AppError, ErrorKind},
 };
 
@@ -66,44 +66,30 @@ where
     }
 }
 
-/// 权限检查提取器 - 自动验证用户认证并提供权限检查方法
+/// 提取已认证的用户
 #[derive(Debug)]
-pub struct RequirePermission(pub UserPrincipal);
+pub struct AuthedUser(pub UserPrincipal);
 
-impl RequirePermission {
-    /// 检查用户是否有指定权限
-    pub fn has_permission(&self, perm: Permission) -> bool {
-        self.0.has_permission(perm)
-    }
-
-    /// 检查用户是否有指定角色
-    pub fn has_role(&self, role_name: &str) -> bool {
-        self.0.has_role(role_name)
-    }
-
+impl AuthedUser {
     /// 获取用户主体
     pub fn user(&self) -> &UserPrincipal {
         &self.0
     }
 }
 
-impl<S> FromRequestParts<S> for RequirePermission
+impl<S> FromRequestParts<S> for AuthedUser
 where
     S: Send + Sync,
 {
     type Rejection = AppError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        // 提取 AuthSession
         let auth_session = AuthSession::from_request_parts(parts, state)
             .await
             .map_err(|_| ErrorKind::Internal.with_message("Failed to extract auth session"))?;
 
-        let user = auth_session
-            .user
-            .as_ref()
-            .ok_or(ErrorKind::Unauthorized)?;
+        let user = auth_session.user.as_ref().ok_or(ErrorKind::Unauthorized)?;
 
-        Ok(RequirePermission(user.clone()))
+        Ok(AuthedUser(user.clone()))
     }
 }

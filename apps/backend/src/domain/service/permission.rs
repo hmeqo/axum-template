@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
 use crate::{
-    domain::{db::Pk, model::PermissionActiveModelExt, repository::PermissionRepository},
+    domain::{
+        db::Pk,
+        model::{Perm, PermissionActiveModelExt},
+        repository::PermissionRepository,
+    },
     error::{ErrorKind, Result},
 };
 use entity::permission;
@@ -14,21 +18,17 @@ pub struct PermissionService {
 
 impl PermissionService {
     /// Create a new permission
-    pub async fn create(
-        &self,
-        resource: String,
-        action: String,
-        description: Option<String>,
-    ) -> Result<permission::Model> {
-        if self
-            .repo
-            .exists_by_resource_action(&resource, &action)
-            .await?
-        {
+    pub async fn create(&self, perm: Perm) -> Result<permission::Model> {
+        let code = perm.code();
+
+        if self.repo.exists_by_code(code).await? {
             return Err(ErrorKind::AlreadyExists.with_message("Permission already exists"));
         }
 
-        let active = permission::ActiveModel::new_permission(resource, action, description);
+        let active = permission::ActiveModel::new_permission(
+            code.to_owned(),
+            Some(perm.description().to_owned()),
+        );
         self.repo.insert(active).await
     }
 
@@ -45,18 +45,14 @@ impl PermissionService {
             .ok_or_else(|| ErrorKind::NotFound.with_message("Permission not found"))
     }
 
-    /// Find permission by resource and action
-    pub async fn find_by_resource_action(
-        &self,
-        resource: &str,
-        action: &str,
-    ) -> Result<Option<permission::Model>> {
-        self.repo.find_by_resource_action(resource, action).await
+    /// Find permission
+    pub async fn find(&self, perm: Perm) -> Result<Option<permission::Model>> {
+        self.repo.find_by_code(perm.code()).await
     }
 
-    /// Check if permission exists by resource/action
-    pub async fn exists_by_resource_action(&self, resource: &str, action: &str) -> Result<bool> {
-        self.repo.exists_by_resource_action(resource, action).await
+    /// Check if permission exists
+    pub async fn exists(&self, perm: Perm) -> Result<bool> {
+        self.repo.exists_by_code(perm.code()).await
     }
 
     /// List permissions with pagination

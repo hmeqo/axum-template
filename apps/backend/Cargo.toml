@@ -29,6 +29,7 @@ strum = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
 tokio = { workspace = true }
+tokio-stream = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 tower-sessions = { workspace = true }
@@ -42,3 +43,5 @@ utoipa-scalar = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 uuid = { workspace = true }
 validator = { workspace = true }
+jsonrpsee = { workspace = true }
+arc-swap = { workspace = true }

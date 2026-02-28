@@ -1,164 +1,147 @@
 use chrono::Utc;
 use entity::permission;
 use sea_orm::ActiveValue::Set;
-use strum::{AsRefStr, EnumIter, EnumString, IntoStaticStr};
+use serde::{Deserialize, Serialize};
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator, IntoStaticStr};
+use utoipa::ToSchema;
 
-/// 系统资源类型枚举
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, EnumIter, AsRefStr, IntoStaticStr)]
-#[strum(serialize_all = "snake_case")]
-pub enum Resource {
-    User,
-    Role,
-    Permission,
-    Admin,
-}
-
-/// 操作类型枚举
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, EnumIter, AsRefStr, IntoStaticStr)]
-#[strum(serialize_all = "snake_case")]
-pub enum Action {
-    Create,
-    Read,
-    Update,
-    Delete,
-    List,
-    Assign,
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    EnumString,
+    EnumIter,
+    IntoStaticStr,
+    Serialize,
+    Deserialize,
+    Display,
+    ToSchema,
+)]
+pub enum Perm {
+    #[serde(rename = "*")]
     #[strum(serialize = "*")]
     All,
-}
 
-/// 权限枚举 - 每个变体代表一个具体权限
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
-pub enum Permission {
-    // User management
-    UserCreate,
+    #[serde(rename = "user:read")]
+    #[strum(serialize = "user:read")]
     UserRead,
-    UserUpdate,
+    #[serde(rename = "user:write")]
+    #[strum(serialize = "user:write")]
+    UserWrite,
+    #[serde(rename = "user:delete")]
+    #[strum(serialize = "user:delete")]
     UserDelete,
-    UserList,
-    // Role management
-    RoleCreate,
+    #[serde(rename = "user:*")]
+    #[strum(serialize = "user:*")]
+    UserAll,
+
+    #[serde(rename = "role:read")]
+    #[strum(serialize = "role:read")]
     RoleRead,
-    RoleUpdate,
+    #[serde(rename = "role:write")]
+    #[strum(serialize = "role:write")]
+    RoleWrite,
+    #[serde(rename = "role:delete")]
+    #[strum(serialize = "role:delete")]
     RoleDelete,
-    RoleList,
-    RoleAssign,
-    // Permission management
-    PermissionRead,
-    PermissionList,
-    // Admin
-    AdminAll,
+    #[serde(rename = "role:*")]
+    #[strum(serialize = "role:*")]
+    RoleAll,
 }
 
-impl Permission {
-    /// 从资源和操作创建权限枚举
-    pub fn from_resource_action(resource: &str, action: &str) -> Option<Self> {
-        match (resource, action) {
-            ("user", "create") => Some(Self::UserCreate),
-            ("user", "read") => Some(Self::UserRead),
-            ("user", "update") => Some(Self::UserUpdate),
-            ("user", "delete") => Some(Self::UserDelete),
-            ("user", "list") => Some(Self::UserList),
-            ("role", "create") => Some(Self::RoleCreate),
-            ("role", "read") => Some(Self::RoleRead),
-            ("role", "update") => Some(Self::RoleUpdate),
-            ("role", "delete") => Some(Self::RoleDelete),
-            ("role", "list") => Some(Self::RoleList),
-            ("role", "assign") => Some(Self::RoleAssign),
-            ("permission", "read") => Some(Self::PermissionRead),
-            ("permission", "list") => Some(Self::PermissionList),
-            ("admin", "*") => Some(Self::AdminAll),
-            _ => None,
-        }
+impl Perm {
+    pub fn from_code(code: &str) -> Option<Self> {
+        code.parse().ok()
     }
 
-    /// 获取资源类型和操作类型
-    pub const fn resource_action(&self) -> (Resource, Action) {
-        match self {
-            Self::UserCreate => (Resource::User, Action::Create),
-            Self::UserRead => (Resource::User, Action::Read),
-            Self::UserUpdate => (Resource::User, Action::Update),
-            Self::UserDelete => (Resource::User, Action::Delete),
-            Self::UserList => (Resource::User, Action::List),
-            Self::RoleCreate => (Resource::Role, Action::Create),
-            Self::RoleRead => (Resource::Role, Action::Read),
-            Self::RoleUpdate => (Resource::Role, Action::Update),
-            Self::RoleDelete => (Resource::Role, Action::Delete),
-            Self::RoleList => (Resource::Role, Action::List),
-            Self::RoleAssign => (Resource::Role, Action::Assign),
-            Self::PermissionRead => (Resource::Permission, Action::Read),
-            Self::PermissionList => (Resource::Permission, Action::List),
-            Self::AdminAll => (Resource::Admin, Action::All),
-        }
+    pub fn code(&self) -> &'static str {
+        self.into()
     }
 
-    /// 获取资源类型
-    pub const fn resource(&self) -> Resource {
-        self.resource_action().0
-    }
-
-    /// 获取操作类型
-    pub const fn action(&self) -> Action {
-        self.resource_action().1
-    }
-
-    /// 获取描述
     pub const fn description(&self) -> &'static str {
         match self {
-            Self::UserCreate => "Create new users",
-            Self::UserRead => "View user information",
-            Self::UserUpdate => "Update user information",
-            Self::UserDelete => "Delete users",
-            Self::UserList => "List all users",
-            Self::RoleCreate => "Create new roles",
-            Self::RoleRead => "View role information",
-            Self::RoleUpdate => "Update role information",
-            Self::RoleDelete => "Delete roles",
-            Self::RoleList => "List all roles",
-            Self::RoleAssign => "Assign roles to users",
-            Self::PermissionRead => "View permission information",
-            Self::PermissionList => "List all permissions",
-            Self::AdminAll => "All admin permissions",
+            Self::All => "超级用户",
+            Self::UserRead => "查看用户信息",
+            Self::UserWrite => "创建/修改用户",
+            Self::UserDelete => "删除用户",
+            Self::UserAll => "用户管理所有权限",
+            Self::RoleRead => "查看角色信息",
+            Self::RoleWrite => "创建/修改角色",
+            Self::RoleDelete => "删除角色",
+            Self::RoleAll => "角色管理所有权限",
         }
     }
 
-    pub fn matches(&self, resource: &str, action: &str) -> bool {
-        (self.resource_str() == resource || self.resource_str() == Resource::Admin.as_ref())
-            && (self.action_str() == action || self.action_str() == Action::All.as_ref())
+    pub fn matches(&self, target_code: &str) -> bool {
+        let self_code = self.code();
+
+        if self_code == Perm::All.code() {
+            return true;
+        }
+
+        // 精确匹配
+        if self_code == target_code {
+            return true;
+        }
+
+        // 通配符匹配，如 "user:*" 匹配 "user:read"
+        if let Some(prefix) = self_code.strip_suffix(":*") {
+            if let Some(target_prefix) = target_code.split(':').next() {
+                return prefix == target_prefix;
+            }
+        }
+
+        false
     }
 
-    /// 获取完整权限名 (resource:action)
-    pub fn full_name(&self) -> String {
-        format!("{}:{}", self.resource().as_ref(), self.action().as_ref())
+    /// 检查权限列表中是否包含目标权限
+    pub fn check_permissions(permissions: &[String], target_code: &str) -> bool {
+        permissions.iter().any(|perm| {
+            // 超级管理员权限
+            if perm == "*" {
+                return true;
+            }
+
+            // 精确匹配
+            if perm == target_code {
+                return true;
+            }
+
+            // 通配符匹配
+            if let Some(prefix) = perm.strip_suffix(":*") {
+                if let Some(target_prefix) = target_code.split(':').next() {
+                    return prefix == target_prefix;
+                }
+            }
+
+            false
+        })
     }
 
-    /// 获取资源字符串
-    pub fn resource_str(&self) -> &'static str {
-        self.resource().into()
-    }
-
-    /// 获取操作字符串
-    pub fn action_str(&self) -> &'static str {
-        self.action().into()
+    /// 获取所有权限列表（用于初始化数据库）
+    pub fn all() -> Vec<Perm> {
+        Self::iter().collect()
     }
 }
 
 // 从数据库模型转换为权限枚举
-impl TryFrom<&permission::Model> for Permission {
+impl TryFrom<&permission::Model> for Perm {
     type Error = String;
 
     fn try_from(model: &permission::Model) -> Result<Self, Self::Error> {
-        Self::from_resource_action(&model.resource, &model.action)
-            .ok_or_else(|| format!("Unknown permission: {}:{}", model.resource, model.action))
+        Self::from_code(&model.code)
+            .ok_or_else(|| format!("Unknown permission code: {}", model.code))
     }
 }
 
 // 从权限枚举转换为数据库模型
-impl From<Permission> for permission::ActiveModel {
-    fn from(perm: Permission) -> Self {
+impl From<Perm> for permission::ActiveModel {
+    fn from(perm: Perm) -> Self {
         permission::ActiveModel {
-            resource: Set(perm.resource_str().to_string()),
-            action: Set(perm.action_str().to_string()),
+            code: Set(perm.code().to_string()),
             description: Set(Some(perm.description().to_string())),
             created_at: Set(Utc::now().into()),
             ..Default::default()
@@ -166,46 +149,55 @@ impl From<Permission> for permission::ActiveModel {
     }
 }
 
+/// 权限扩展 trait
 pub trait PermissionExt {
-    /// 判断是否匹配指定的资源和操作
-    fn matches(&self, perm: Permission) -> bool;
+    /// 判断是否匹配指定的权限代码
+    fn matches_code(&self, code: &str) -> bool;
 
-    /// 获取权限全名 (resource:action)
-    fn full_name(&self) -> String;
+    /// 获取权限代码
+    fn permission_code(&self) -> String;
+}
+
+impl PermissionExt for permission::Model {
+    fn matches_code(&self, code: &str) -> bool {
+        // 超级管理员权限匹配所有
+        if self.code == "*" {
+            return true;
+        }
+
+        // 精确匹配
+        if self.code == code {
+            return true;
+        }
+
+        // 通配符匹配
+        if let Some(prefix) = self.code.strip_suffix(":*") {
+            if let Some(target_prefix) = code.split(':').next() {
+                return prefix == target_prefix;
+            }
+        }
+
+        false
+    }
+
+    fn permission_code(&self) -> String {
+        self.code.clone()
+    }
 }
 
 /// Permission ActiveModel 创建方法
 pub trait PermissionActiveModelExt {
     /// 创建新权限的 ActiveModel
-    fn new_permission(
-        resource: String,
-        action: String,
-        description: Option<String>,
-    ) -> permission::ActiveModel;
+    fn new_permission(code: String, description: Option<String>) -> permission::ActiveModel;
 
     /// 更新描述
     fn set_description(&mut self, description: Option<String>);
 }
 
-impl PermissionExt for permission::Model {
-    fn matches(&self, perm: Permission) -> bool {
-        perm.matches(&self.resource, &self.action)
-    }
-
-    fn full_name(&self) -> String {
-        format!("{}:{}", self.resource, self.action)
-    }
-}
-
 impl PermissionActiveModelExt for permission::ActiveModel {
-    fn new_permission(
-        resource: String,
-        action: String,
-        description: Option<String>,
-    ) -> permission::ActiveModel {
+    fn new_permission(code: String, description: Option<String>) -> permission::ActiveModel {
         permission::ActiveModel {
-            resource: Set(resource),
-            action: Set(action),
+            code: Set(code),
             description: Set(description),
             created_at: Set(Utc::now().into()),
             ..Default::default()
@@ -214,5 +206,27 @@ impl PermissionActiveModelExt for permission::ActiveModel {
 
     fn set_description(&mut self, description: Option<String>) {
         self.description = Set(description);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use strum::IntoEnumIterator;
+
+    #[test]
+    fn test_permissions_consistency() {
+        for perm in Perm::iter() {
+            let serde_json_str = serde_json::to_string(&perm).expect("Serialize failed");
+            let serde_val = serde_json_str.trim_matches('"');
+
+            let strum_val: &'static str = perm.into();
+
+            assert_eq!(
+                serde_val, strum_val,
+                "JSON and Strum values for {} are inconsistent: {} != {}",
+                perm, serde_val, strum_val
+            );
+        }
     }
 }

@@ -1,4 +1,17 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+BASE_DIR=$(pwd)
+
+loadconfig() {
+    cargo build --quiet --bin backend 2>/dev/null || true
+    BIN_PATH="./target/debug/backend"
+    CONFIG_JSON=$("$BIN_PATH" config)
+    export DATABASE_URL=$(echo "$CONFIG_JSON" | jq -r '.database.url')
+}
 
 migrate() {
     cargo run --bin migration -- up
@@ -10,19 +23,22 @@ fresh() {
 
 init() {
     cargo run --bin backend -- init
+}
+
+create-superuser() {
     cargo run --bin backend -- create-superuser
 }
 
 generate-entity() {
-    dir=crates/entity/src/entity
-    rm -r $dir
-    sea-orm-cli generate entity --with-serde both --date-time-crate chrono -o $dir
+    d=crates/entity/src/entity
+    rm -rf $d
+    sea-orm-cli generate entity --with-serde both --date-time-crate chrono -o $d
 }
 
 dev() {
-    cargo watch -x "run --bin backend -- serve"
+    exec cargo watch -x "run --bin backend -- serve"
 }
 
-source .env
+loadconfig
 
 "$@"

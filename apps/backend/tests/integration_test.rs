@@ -10,9 +10,9 @@ use tower::ServiceExt;
 
 async fn create_router_with_state() -> Result<Router> {
     let mut bootstrap = AppBootstrap::load()?;
-    bootstrap.init_domain().await?;
-    bootstrap.init_app_state();
-    bootstrap.create_router().await.map_err(Into::into)
+    let domain = bootstrap.create_domain().await?;
+    let app_state = bootstrap.create_app_state(domain);
+    Ok(bootstrap.create_router(app_state).await?)
 }
 
 #[tokio::test]

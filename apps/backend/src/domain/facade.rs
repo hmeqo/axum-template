@@ -75,6 +75,7 @@ impl Services {
         });
         let auth = Arc::new(AuthService {
             user_service: Arc::clone(&user),
+            role_service: Arc::clone(&role),
         });
 
         Self {

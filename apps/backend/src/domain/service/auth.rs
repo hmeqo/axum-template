@@ -1,15 +1,19 @@
 use std::sync::Arc;
 
 use crate::{
-    domain::{db::Pk, model::UserPrincipal, service::UserService},
+    domain::{
+        db::Pk,
+        model::UserPrincipal,
+        service::{RoleService, UserService},
+    },
     error::Result,
     util::password,
 };
-use entity::user;
 
 #[derive(Debug)]
 pub struct AuthService {
     pub user_service: Arc<UserService>,
+    pub role_service: Arc<RoleService>,
 }
 
 impl AuthService {
@@ -18,11 +22,13 @@ impl AuthService {
         &self,
         username: &str,
         password: &str,
-    ) -> Result<Option<user::Model>> {
+    ) -> Result<Option<UserPrincipal>> {
         let user = self.user_service.find_by_username(username).await?;
 
         match user {
-            Some(user) if password::verify(password, &user.password)? => Ok(Some(user)),
+            Some(user) if password::verify(password, &user.password)? => Ok(Some(
+                UserPrincipal::new(&self.user_service, &self.role_service, user),
+            )),
             _ => Ok(None),
         }
     }
@@ -31,6 +37,6 @@ impl AuthService {
         self.user_service
             .find_by_id(user_id)
             .await
-            .map(|r| r.map(UserPrincipal::new))
+            .map(|uon| uon.map(|u| UserPrincipal::new(&self.user_service, &self.role_service, u)))
     }
 }

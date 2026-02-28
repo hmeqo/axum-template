@@ -28,6 +28,8 @@ pub enum ErrorKind {
 
     #[strum(serialize = "auth.unauthorized")]
     Unauthorized,
+    #[strum(serialize = "auth.forbidden")]
+    Forbidden,
     #[strum(serialize = "auth.permission_denied")]
     PermissionDenied,
     #[strum(serialize = "auth.invalid_credentials")]
@@ -62,7 +64,9 @@ impl ErrorKind {
             | Self::InvalidParameter
             | Self::ValidationFailed => StatusCode::BAD_REQUEST,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
-            Self::PermissionDenied | Self::InvalidCredentials => StatusCode::FORBIDDEN,
+            Self::Forbidden | Self::PermissionDenied | Self::InvalidCredentials => {
+                StatusCode::FORBIDDEN
+            }
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::AlreadyExists => StatusCode::CONFLICT,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -74,6 +78,7 @@ impl ErrorKind {
             Self::DataParse => "Data parsing failed",
             Self::InvalidParameter => "Invalid parameter",
             Self::Unauthorized => "Unauthorized",
+            Self::Forbidden => "Forbidden",
             Self::PermissionDenied => "Permission denied",
             Self::InvalidCredentials => "Invalid credentials",
             Self::ValidationFailed => "Validation failed",
@@ -191,6 +196,9 @@ impl AppError {
     }
 
     pub fn trace_source(&self) {
+        if self.kind.is_internal_error() {
+            tracing::error!("Internal error: {}", self);
+        }
         if let Some(err) = self.source.as_ref() {
             tracing::error!(error = err)
         }

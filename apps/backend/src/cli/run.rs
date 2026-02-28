@@ -39,11 +39,9 @@ pub async fn run() -> Result<()> {
                     command_impl::create_role(&services, name, description).await
                 }
                 RoleCommands::Delete { name } => command_impl::delete_role(&services, name).await,
-                RoleCommands::AddPermission {
-                    role,
-                    resource,
-                    action,
-                } => command_impl::add_permission_to_role(&services, role, resource, action).await,
+                RoleCommands::AddPermission { role, perm } => {
+                    command_impl::add_permission_to_role(&services, role, perm).await
+                }
             }
         }
         Some(Commands::Permission(cmd)) => match cmd {
@@ -52,11 +50,14 @@ pub async fn run() -> Result<()> {
                 command_impl::list_permissions(&services).await
             }
         },
+        Some(Commands::Config) => {
+            let config = AppBootstrap::load()?.config;
+            command_impl::print_config(&config)
+        }
     }
 }
 
 async fn get_services() -> Result<Services> {
     let mut b = AppBootstrap::load()?;
-    b.init_domain().await?;
-    Ok(b.domain.take().unwrap().services)
+    Ok(b.create_domain().await?.services)
 }

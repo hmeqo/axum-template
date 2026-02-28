@@ -1,6 +1,5 @@
 pub mod db;
 pub mod facade;
-pub mod initdata;
 pub mod model;
 pub mod repository;
 pub mod service;

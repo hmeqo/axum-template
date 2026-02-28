@@ -55,26 +55,12 @@ impl MigrationTrait for Migration {
                     .table(Permission::Table)
                     .if_not_exists()
                     .col(pk_auto(Permission::Id).big_integer())
-                    .col(string(Permission::Resource))
-                    .col(string(Permission::Action))
+                    .col(string_uniq(Permission::Code))
                     .col(string_null(Permission::Description))
                     .col(
                         timestamp_with_time_zone(Permission::CreatedAt)
                             .default(Expr::current_timestamp()),
                     )
-                    .to_owned(),
-            )
-            .await?;
-
-        // Create unique index for permissions
-        manager
-            .create_index(
-                Index::create()
-                    .name("idx_permissions_resource_action")
-                    .table(Permission::Table)
-                    .col(Permission::Resource)
-                    .col(Permission::Action)
-                    .unique()
                     .to_owned(),
             )
             .await?;
@@ -214,8 +200,7 @@ enum Role {
 enum Permission {
     Table,
     Id,
-    Resource,
-    Action,
+    Code,
     Description,
     CreatedAt,
 }

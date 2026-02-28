@@ -1,11 +1,13 @@
 //! CLI command implementations
 
 use anyhow::Result;
-use strum::IntoEnumIterator;
 
-use crate::domain::{
-    Services,
-    initdata::{DEFAULT_ROLES, Permission},
+use crate::{
+    config::AppConfig,
+    domain::{
+        Services,
+        model::{DefaultRole, Perm, role::DEFAULT_ROLE_PERMISSIONS},
+    },
 };
 
 /// Initialize default roles and permissions
@@ -16,67 +18,38 @@ pub async fn init_rbac(services: &Services, _force: bool) -> Result<()> {
     println!("Initializing permissions...");
 
     // Create default permissions
-    for perm in Permission::iter() {
-        match permission_service
-            .create(
-                perm.resource_str().to_string(),
-                perm.action_str().to_string(),
-                Some(perm.description().to_string()),
-            )
-            .await
-        {
-            Ok(p) => println!("  Created permission: {}:{}", p.resource, p.action),
-            Err(e) => println!(
-                "  Skipped {}:{} ({})",
-                perm.resource_str(),
-                perm.action_str(),
-                e
-            ),
+    for perm in Perm::all() {
+        match permission_service.create(perm).await {
+            Ok(p) => println!("  Created permission: {}", p.code),
+            Err(e) => println!("  Skipped {} ({})", perm.code(), e),
         }
     }
 
     println!("\nInitializing roles...");
 
     // Create default roles
-    for (name, description) in DEFAULT_ROLES {
+    for role in DefaultRole::all() {
         match role_service
-            .create(name.to_string(), Some(description.to_string()))
+            .create(role.name().to_owned(), Some(role.description().to_owned()))
             .await
         {
             Ok(r) => println!("  Created role: {}", r.name),
-            Err(e) => println!("  Skipped {} ({})", name, e),
+            Err(e) => println!("  Skipped {} ({})", role.name(), e),
         }
     }
 
-    // Assign all permissions to superuser role
-    if let Ok(Some(superuser)) = role_service.find_by_name("superuser").await {
-        println!("\nAssigning all permissions to superuser...");
-        let permissions = permission_service.list_all().await?;
-        for perm in permissions {
-            if role_service
-                .add_permission(superuser.id, perm.id)
-                .await
-                .is_ok()
-            {
-                println!("  Added {}:{} to superuser", perm.resource, perm.action);
-            }
-        }
-    }
-
-    // Assign basic permissions to user role
-    if let Ok(Some(user_role)) = role_service.find_by_name("user").await {
-        println!("\nAssigning basic permissions to user role...");
-        let basic_perms = [("user", "read")];
-        for (resource, action) in basic_perms {
-            if let Ok(Some(perm)) = permission_service
-                .find_by_resource_action(resource, action)
-                .await
-                && role_service
-                    .add_permission(user_role.id, perm.id)
-                    .await
-                    .is_ok()
-            {
-                println!("  Added {}:{} to user", resource, action);
+    for (role, perms) in DEFAULT_ROLE_PERMISSIONS {
+        if let Ok(Some(role_model)) = role_service.find_by_name(role.name()).await {
+            println!("\nAssigning permissions to {} role...", role.name());
+            for perm in *perms {
+                if let Ok(Some(perm_model)) = permission_service.find(*perm).await
+                    && role_service
+                        .add_permission(role_model.id, perm_model.id)
+                        .await
+                        .is_ok()
+                {
+                    println!("  Added {} to {}", perm.code(), role.name());
+                }
             }
         }
     }
@@ -164,8 +137,7 @@ pub async fn delete_role(services: &Services, name: String) -> Result<()> {
 pub async fn add_permission_to_role(
     services: &Services,
     role_name: String,
-    resource: String,
-    action: String,
+    perm: Perm,
 ) -> Result<()> {
     let role_service = &services.role;
     let permission_service = &services.permission;
@@ -174,18 +146,12 @@ pub async fn add_permission_to_role(
         anyhow::bail!("Role not found")
     };
 
-    let Some(permission) = permission_service
-        .find_by_resource_action(&resource, &action)
-        .await?
-    else {
+    let Some(permission) = permission_service.find(perm).await? else {
         anyhow::bail!("Permission not found")
     };
 
     role_service.add_permission(role.id, permission.id).await?;
-    println!(
-        "Added permission {}:{} to role {}",
-        resource, action, role_name
-    );
+    println!("Added permission {} to role {}", perm.code(), role_name);
     Ok(())
 }
 
@@ -197,12 +163,14 @@ pub async fn list_permissions(services: &Services) -> Result<()> {
     println!("Permissions:");
     println!("{:-<60}", "");
     for perm in permissions {
-        println!(
-            "  {}:{} - {}",
-            perm.resource,
-            perm.action,
-            perm.description.unwrap_or_default()
-        );
+        println!("  {} - {}", perm.code, perm.description.unwrap_or_default());
     }
+    Ok(())
+}
+
+/// Print configuration as JSON
+pub fn print_config(config: &AppConfig) -> Result<()> {
+    let json = serde_json::to_string_pretty(config)?;
+    println!("{}", json);
     Ok(())
 }

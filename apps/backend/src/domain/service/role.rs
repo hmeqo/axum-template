@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     domain::{
         db::Pk,
-        model::{Permission, PermissionExt, RoleActiveModelExt},
+        model::{Perm, PermissionExt, RoleActiveModelExt},
         repository::{
             PermissionRepository, RolePermissionRepository, RoleRepository, UserRoleRepository,
         },
@@ -39,8 +39,7 @@ impl RoleService {
 
     /// Get role by ID or return not found
     pub async fn get_by_id(&self, id: Pk) -> Result<role::Model> {
-        self.role_repo
-            .find_by_id(id)
+        self.find_by_id(id)
             .await?
             .ok_or(ErrorKind::NotFound.with_message("Role not found"))
     }
@@ -136,18 +135,26 @@ impl RoleService {
         self.permission_repo.list_by_ids(ids).await
     }
 
-    /// Check if role has a specific permission
-    pub async fn has_permission(&self, role_id: Pk, perm: Permission) -> Result<bool> {
+    /// Check if role has a specific permission (by Permission enum)
+    pub async fn has_permission(&self, role_id: Pk, perm: Perm) -> Result<bool> {
         Ok(self
             .get_permissions(role_id)
             .await?
             .iter()
-            .any(|p| p.matches(perm)))
+            .any(|p| p.matches_code(perm.code())))
+    }
+
+    /// Check if role has a specific permission (by code string)
+    pub async fn has_permission_by_code(&self, role_id: Pk, code: &str) -> Result<bool> {
+        Ok(self
+            .get_permissions(role_id)
+            .await?
+            .iter()
+            .any(|p| p.matches_code(code)))
     }
 
     /// Assign role to user
     pub async fn assign_to_user(&self, user_id: Pk, role_id: Pk) -> Result<()> {
-        let _ = self.get_by_id(role_id).await?;
         if self.user_role_repo.exists(user_id, role_id).await? {
             return Err(ErrorKind::AlreadyExists.with_message("Role already assigned to user"));
         }
@@ -180,16 +187,9 @@ impl RoleService {
         Ok(all_permissions)
     }
 
-    /// Check if user has a specific permission
-    pub async fn user_has_permission(
-        &self,
-        user_id: Pk,
-        resource: &str,
-        action: &str,
-    ) -> Result<bool> {
+    /// Check if user has a specific permission (by code)
+    pub async fn user_has_permission(&self, user_id: Pk, code: &str) -> Result<bool> {
         let permissions = self.get_user_permissions(user_id).await?;
-        Ok(permissions
-            .iter()
-            .any(|p| p.resource == resource && p.action == action))
+        Ok(permissions.iter().any(|p| p.matches_code(code)))
     }
 }

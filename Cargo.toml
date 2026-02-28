@@ -21,8 +21,10 @@ thiserror = "2"
 chrono = { version = "0.4", features = ["serde", "now"] }
 time = { version = "0.3" }
 tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
 uuid = { version = "1", features = ["v4", "serde"] }
 validator = { version = "0.20", features = ["derive"] }
+arc-swap = "1.8"
 
 # Web & API
 axum = { version = "0.8", features = ["ws", "macros"] }
@@ -52,6 +54,12 @@ sea-orm-migration = { version = "1", features = [
     "sqlx-postgres",
     "with-chrono",
     "with-uuid",
+] }
+jsonrpsee = { version = "0.26", features = [
+    "tokio",
+    "macros",
+    "server",
+    "ws-client",
 ] }
 
 # Auth & Crypto

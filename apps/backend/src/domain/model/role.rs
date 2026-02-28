@@ -1,6 +1,41 @@
 use chrono::Utc;
 use entity::role;
 use sea_orm::ActiveValue::Set;
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator, IntoStaticStr};
+
+use crate::domain::model::Perm;
+
+pub const DEFAULT_ROLE_PERMISSIONS: &[(DefaultRole, &[Perm])] = &[
+    (DefaultRole::Superuser, &[Perm::All]),
+    (DefaultRole::Admin, &[Perm::UserAll, Perm::RoleAll]),
+    (DefaultRole::User, &[Perm::UserRead]),
+];
+
+#[derive(Debug, Clone, Copy, EnumString, EnumIter, IntoStaticStr, Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum DefaultRole {
+    Superuser,
+    Admin,
+    User,
+}
+
+impl DefaultRole {
+    pub fn name(&self) -> &'static str {
+        self.into()
+    }
+
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Superuser => "超级用户",
+            Self::Admin => "管理员",
+            Self::User => "普通用户",
+        }
+    }
+
+    pub fn all() -> Vec<DefaultRole> {
+        Self::iter().collect()
+    }
+}
 
 /// Role 领域模型行为扩展
 pub trait RoleExt {

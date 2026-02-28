@@ -5,11 +5,11 @@ use crate::{
     app::{
         AppState,
         dto::{request::*, response::*},
+        error::ErrorResponse,
         helper::{
             auth::{AuthSession, Credentials},
             extractor::AppJson,
         },
-        response::ErrorResponse,
     },
     error::{AppError, ErrorKind},
     ext::{EndpointRouter, EndpointRouterT, OpenApiRouterExt},
@@ -24,7 +24,7 @@ pub async fn login(
     mut auth_session: AuthSession,
     AppJson(payload): AppJson<LoginRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_with_roles = auth_session
+    let user = auth_session
         .authenticate(Credentials {
             username: payload.username,
             password: payload.password,
@@ -34,13 +34,15 @@ pub async fn login(
         .ok_or(ErrorKind::InvalidCredentials)?;
 
     auth_session
-        .login(&user_with_roles)
+        .login(&user)
         .await
         .map_err(ErrorKind::wrap_internal)?;
+    let permissions = user.permissions_as_enum().await;
 
     let response = LoginResponse {
         state: AuthStateResponse {
-            user: UserResponse::from(user_with_roles.user),
+            user: UserResponse::from(user.user),
+            permissions,
         },
     };
 
@@ -74,10 +76,12 @@ pub async fn logout(mut auth_session: AuthSession) -> Result<impl IntoResponse, 
     (status = 400, body = ErrorResponse),
 ))]
 pub async fn me(auth_session: AuthSession) -> Result<impl IntoResponse, AppError> {
-    let user_with_roles = auth_session.user.ok_or(ErrorKind::Unauthorized)?;
+    let user = auth_session.user.ok_or(ErrorKind::Unauthorized)?;
+    let permissions = user.permissions_as_enum().await;
 
     let response = AuthStateResponse {
-        user: UserResponse::from(user_with_roles.user),
+        user: UserResponse::from(user.user),
+        permissions,
     };
     Ok(Json(response))
 }

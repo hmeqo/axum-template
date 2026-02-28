@@ -33,7 +33,6 @@ impl AuthnBackend for Backend {
         self.auth_service
             .authenticate(&creds.username, &creds.password)
             .await
-            .map(|r| r.map(UserPrincipal::new))
     }
 
     /// Get user by ID (used for session validation)

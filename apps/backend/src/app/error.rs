@@ -31,9 +31,7 @@ impl ErrorResponse {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        if self.kind().is_internal_error() {
-            self.trace_source();
-        }
+        self.trace_source();
         let status_code = self.status_code();
         let response = ErrorResponse::from_error(&self);
         (status_code, Json(response)).into_response()

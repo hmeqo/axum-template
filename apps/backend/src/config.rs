@@ -19,6 +19,8 @@ pub struct AppConfig {
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
+    pub rpc_host: String,
+    pub rpc_port: u16,
 }
 
 impl Default for ServerConfig {
@@ -26,6 +28,8 @@ impl Default for ServerConfig {
         Self {
             host: "0.0.0.0".to_string(),
             port: 8000,
+            rpc_host: "0.0.0.0".to_string(),
+            rpc_port: 8001,
         }
     }
 }

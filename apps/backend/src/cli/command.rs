@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 
+use crate::domain::model::Perm;
+
 #[derive(Parser)]
 #[command(name = env!("CARGO_CRATE_NAME"))]
 pub struct Cli {
@@ -37,6 +39,9 @@ pub enum Commands {
     /// Manage permissions
     #[command(subcommand)]
     Permission(PermissionCommands),
+
+    /// Print configuration as JSON
+    Config,
 }
 
 #[derive(Subcommand)]
@@ -70,11 +75,7 @@ pub enum RoleCommands {
 
         /// Resource name
         #[arg(long)]
-        resource: String,
-
-        /// Action name
-        #[arg(long)]
-        action: String,
+        perm: Perm,
     },
 }
 

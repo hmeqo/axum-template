@@ -38,7 +38,5 @@ pub async fn create_router(state: AppState) -> Result<Router> {
 /// Create TCP listener for the server
 pub async fn create_listener(config: &AppConfig) -> Result<TcpListener> {
     let addr = format!("{}:{}", config.server.host, config.server.port);
-    let listener = TcpListener::bind(&addr).await?;
-    tracing::info!("Server listening on {}", addr);
-    Ok(listener)
+    Ok(TcpListener::bind(&addr).await?)
 }

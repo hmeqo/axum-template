@@ -5,12 +5,18 @@ use crate::error::Result;
 pub async fn serve() -> Result<()> {
     let mut bootstrap = AppBootstrap::load()?;
     bootstrap.init_tracing();
-    bootstrap.init_domain().await?;
-    bootstrap.init_app_state();
-    let listener = bootstrap.create_listener().await?;
-    let router = bootstrap.create_router().await?;
+    let domain = bootstrap.create_domain().await?;
+    let app_state = bootstrap.create_app_state(domain);
 
-    axum::serve(listener, router).await?;
+    let (handle, addr) = bootstrap
+        .start_axum(bootstrap.create_router(app_state.clone()).await?)
+        .await?;
+    let rpc_addr = bootstrap.start_jsonrpc(app_state).await;
+
+    tracing::info!("App listening on {}", addr);
+    tracing::info!("JSONRPC listening on {}", rpc_addr.unwrap());
+
+    handle.await.unwrap();
 
     tracing::info!("App has terminated");
 

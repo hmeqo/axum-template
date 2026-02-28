@@ -34,24 +34,18 @@ impl PermissionRepository {
             .map_err(Into::into)
     }
 
-    pub async fn find_by_resource_action(
-        &self,
-        resource: &str,
-        action: &str,
-    ) -> Result<Option<permission::Model>> {
+    /// Find permission by code
+    pub async fn find_by_code(&self, code: &str) -> Result<Option<permission::Model>> {
         Permission::find()
-            .filter(permission::Column::Resource.eq(resource))
-            .filter(permission::Column::Action.eq(action))
+            .filter(permission::Column::Code.eq(code))
             .one(self.db())
             .await
             .map_err(Into::into)
     }
 
-    pub async fn exists_by_resource_action(&self, resource: &str, action: &str) -> Result<bool> {
-        Ok(self
-            .find_by_resource_action(resource, action)
-            .await?
-            .is_some())
+    /// Check if permission exists by code
+    pub async fn exists_by_code(&self, code: &str) -> Result<bool> {
+        Ok(self.find_by_code(code).await?.is_some())
     }
 
     pub async fn list(&self, page: u64, per_page: u64) -> Result<Vec<permission::Model>> {
