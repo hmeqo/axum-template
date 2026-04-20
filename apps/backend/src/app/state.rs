@@ -1,13 +1,11 @@
-use std::sync::Arc;
-
 use crate::{
-    config::AppConfig,
+    config::AppConfigManager,
     domain::{Domain, Services},
 };
 
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub config: Arc<AppConfig>,
+    pub config: AppConfigManager,
     pub domain: Domain,
 }
 

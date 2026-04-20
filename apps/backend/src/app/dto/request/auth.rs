@@ -3,7 +3,7 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct LoginRequest {
+pub struct LoginReq {
     pub username: String,
     pub password: String,
 }

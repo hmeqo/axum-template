@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 use crate::domain::db::Pk;
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct UserResponse {
+pub struct UserResp {
     pub id: Pk,
     pub username: String,
     #[schema(value_type = String)]
@@ -14,7 +14,7 @@ pub struct UserResponse {
     pub updated_at: DateTime<FixedOffset>,
 }
 
-impl From<entity::user::Model> for UserResponse {
+impl From<entity::user::Model> for UserResp {
     fn from(user: entity::user::Model) -> Self {
         Self {
             id: user.id,
@@ -26,14 +26,14 @@ impl From<entity::user::Model> for UserResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct UserListResponse {
-    pub users: Vec<UserResponse>,
+pub struct UserListResp {
+    pub users: Vec<UserResp>,
     pub total: u64,
     pub page: u64,
     pub per_page: u64,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct MessageResponse {
+pub struct MessageResp {
     pub message: String,
 }

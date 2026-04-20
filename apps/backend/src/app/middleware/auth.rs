@@ -21,7 +21,7 @@ pub enum DynamicSessionStore {
 
 impl DynamicSessionStore {
     pub async fn from_config(state: &AppState) -> Result<Self> {
-        let url = &state.config.database.url;
+        let url = &state.config.load().database.url;
         if url.starts_with("postgres://") {
             let store = PostgresStore::new(state.domain.db.as_ref().clone());
             store.migrate().await?;
@@ -69,7 +69,7 @@ pub async fn session(state: &AppState) -> Result<AuthManagerLayer<Backend, Dynam
     let layer = SessionManagerLayer::new(store)
         .with_name("session_id")
         .with_expiry(tower_sessions::Expiry::OnInactivity(
-            state.config.session.inactivity_timeout(),
+            state.config.load().session.inactivity_timeout(),
         ));
 
     let backend = Backend {

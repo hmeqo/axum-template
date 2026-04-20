@@ -5,7 +5,7 @@ use crate::{
     app::{
         AppState,
         dto::{request::*, response::*},
-        error::ErrorResponse,
+        error::ErrorResp,
     },
     error::ErrorKind,
     ext::OpenApiRouterExt,
@@ -16,20 +16,20 @@ pub async fn index(State(_state): State<AppState>) -> impl IntoResponse {
     "Hello Axum!".to_string()
 }
 
-#[utoipa::path(post, path="/hello", request_body = HelloRequest, responses(
-    (status = 200, body = HelloResponse))
+#[utoipa::path(post, path="/hello", request_body = HelloReq, responses(
+    (status = 200, body = HelloResp))
 )]
 pub async fn hello(
     State(_state): State<AppState>,
-    Json(payload): Json<HelloRequest>,
+    Json(payload): Json<HelloReq>,
 ) -> impl IntoResponse {
-    Json(HelloResponse {
+    Json(HelloResp {
         message: format!("Hello {}", payload.name),
     })
 }
 
 #[utoipa::path(get, path="/error", responses(
-    (status = 200, body = ErrorResponse))
+    (status = 200, body = ErrorResp))
 )]
 pub async fn error() -> impl IntoResponse {
     ErrorKind::BadRequest.with_message("This is a bad request")

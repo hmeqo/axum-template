@@ -4,12 +4,12 @@ use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(default)]
-pub struct PaginationQuery {
+pub struct PaginationReq {
     pub page: u64,
     pub per_page: u64,
 }
 
-impl Default for PaginationQuery {
+impl Default for PaginationReq {
     fn default() -> Self {
         Self {
             page: 0,

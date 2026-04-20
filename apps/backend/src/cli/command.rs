@@ -11,9 +11,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Start the web server
-    Serve,
-
     /// Initialize default roles and permissions
     Init {
         /// Force re-initialization (will not duplicate existing data)

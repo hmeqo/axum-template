@@ -11,15 +11,16 @@ use utoipa::ToSchema;
 use crate::error::AppError;
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct ErrorResponse {
+pub struct ErrorResp {
     code: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     detail: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Object)]
     errors: Option<Value>,
 }
 
-impl ErrorResponse {
+impl ErrorResp {
     pub fn from_error(error: &AppError) -> Self {
         Self {
             code: error.code().into(),
@@ -33,7 +34,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         self.trace_source();
         let status_code = self.status_code();
-        let response = ErrorResponse::from_error(&self);
+        let response = ErrorResp::from_error(&self);
         (status_code, Json(response)).into_response()
     }
 }

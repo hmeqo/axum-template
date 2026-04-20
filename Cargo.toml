@@ -15,8 +15,10 @@ config = { version = "0.15", features = ["toml"] }
 dotenvy = "0.15"
 rand = "0.9"
 serde = { version = "1", features = ["derive"] }
+serde_with = "3.17"
 serde_json = "1"
 strum = { version = "0.27", features = ["derive"] }
+struct-patch = "0.10.4"
 thiserror = "2"
 chrono = { version = "0.4", features = ["serde", "now"] }
 time = { version = "0.3" }
@@ -32,12 +34,14 @@ axum-extra = { version = "0.12", features = ["cookie"] }
 axum-login = "0.18"
 axum-valid = { version = "0.24", features = ["validator", "into_json"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "fs"] }
 tower-sessions = "0.14"
 tower-sessions-seaorm-store = { version = "0.1", features = [
     "sqlite",
     "postgres",
 ] }
+rust-embed = { version = "8.5", features = ["axum"] }
+mime_guess = "2.0"
 
 # Database
 sea-orm = { version = "1", features = [

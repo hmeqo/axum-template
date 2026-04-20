@@ -3,15 +3,15 @@ use utoipa::ToSchema;
 
 use crate::domain::model::Perm;
 
-use super::UserResponse;
+use super::UserResp;
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct LoginResponse {
-    pub state: AuthStateResponse,
+pub struct LoginResp {
+    pub state: AuthStateResp,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct AuthStateResponse {
-    pub user: UserResponse,
+pub struct AuthStateResp {
+    pub user: UserResp,
     pub permissions: Vec<Perm>,
 }

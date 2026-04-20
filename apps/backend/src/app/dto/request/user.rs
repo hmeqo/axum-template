@@ -3,7 +3,7 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct CreateUserRequest {
+pub struct CreateUserReq {
     #[validate(length(
         min = 3,
         max = 20,
@@ -19,17 +19,17 @@ pub struct CreateUserRequest {
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct UpdateUsernameRequest {
+pub struct UpdateUsernameReq {
     pub username: String,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct ChangePasswordRequest {
+pub struct ChangePasswordReq {
     pub old_password: String,
     pub new_password: String,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct ResetPasswordRequest {
+pub struct ResetPasswordReq {
     pub new_password: String,
 }

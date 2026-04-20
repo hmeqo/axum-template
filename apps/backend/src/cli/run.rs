@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::{CommandFactory, Parser};
+use clap::Parser;
 
 use crate::{
     app::{AppBootstrap, serve},
@@ -16,10 +16,6 @@ pub async fn run() -> Result<()> {
 
     match cli.command {
         None => {
-            Cli::command().print_help()?;
-            Ok(())
-        }
-        Some(Commands::Serve) => {
             serve().await?;
             Ok(())
         }
@@ -51,7 +47,7 @@ pub async fn run() -> Result<()> {
             }
         },
         Some(Commands::Config) => {
-            let config = AppBootstrap::load()?.config;
+            let config = AppBootstrap::load()?.config.load();
             command_impl::print_config(&config)
         }
     }

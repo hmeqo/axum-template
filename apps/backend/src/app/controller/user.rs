@@ -5,7 +5,7 @@ use crate::{
     app::{
         AppState,
         dto::{request::*, response::*},
-        error::ErrorResponse,
+        error::ErrorResp,
         helper::extractor::{AppJson, AppPath, AppQuery, AuthedUser},
     },
     domain::{db::Pk, model::Perm},
@@ -17,12 +17,12 @@ use crate::{
     ("page" = Option<u64>, Query, description = "Page number"),
     ("per_page" = Option<u64>, Query, description = "Items per page")
 ), responses(
-    (status = 200, body = UserListResponse),
-    (status = 400, body = ErrorResponse),
+    (status = 200, body = UserListResp),
+    (status = 400, body = ErrorResp),
 ))]
 pub async fn list(
     State(state): State<AppState>,
-    AppQuery(pagination): AppQuery<PaginationQuery>,
+    AppQuery(pagination): AppQuery<PaginationReq>,
 ) -> Result<impl IntoResponse, AppError> {
     let page = pagination.page;
     let per_page = pagination.per_page;
@@ -30,9 +30,9 @@ pub async fn list(
     let users = state.services().user.list(page, per_page).await?;
     let total = state.services().user.count().await?;
 
-    let user_responses = users.into_iter().map(UserResponse::from).collect();
+    let user_responses = users.into_iter().map(UserResp::from).collect();
 
-    let response = UserListResponse {
+    let response = UserListResp {
         users: user_responses,
         total,
         page,
@@ -42,14 +42,14 @@ pub async fn list(
     Ok(Json(response))
 }
 
-#[utoipa::path(post, path="/", request_body = CreateUserRequest, responses(
-    (status = 200, body = UserResponse),
-    (status = 400, body = ErrorResponse),
+#[utoipa::path(post, path="/", request_body = CreateUserReq, responses(
+    (status = 200, body = UserResp),
+    (status = 400, body = ErrorResp),
 ))]
 pub async fn create(
     AuthedUser(user): AuthedUser,
     State(state): State<AppState>,
-    AppJson(payload): AppJson<CreateUserRequest>,
+    AppJson(payload): AppJson<CreateUserReq>,
 ) -> Result<impl IntoResponse, AppError> {
     if !user.has_permission(Perm::UserWrite).await {
         return Err(ErrorKind::PermissionDenied.with_message("Insufficient permissions"));
@@ -60,62 +60,62 @@ pub async fn create(
         .user
         .create(payload.username, payload.password)
         .await?;
-    let response = UserResponse::from(user);
+    let response = UserResp::from(user);
     Ok(Json(response))
 }
 
 #[utoipa::path(get, path="/{id}", params(
     ("id" = Pk, Path)
 ), responses(
-    (status = 200, body = UserResponse),
-    (status = 400, body = ErrorResponse),
+    (status = 200, body = UserResp),
+    (status = 400, body = ErrorResp),
 ))]
 pub async fn get(
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
 ) -> Result<impl IntoResponse, AppError> {
     let user = state.services().user.get_by_id(id).await?;
-    let response = UserResponse::from(user);
+    let response = UserResp::from(user);
     Ok(Json(response))
 }
 
 #[utoipa::path(put, path="/{id}/username", params(
     ("id" = Pk, Path)
-), request_body = UpdateUsernameRequest, responses(
-    (status = 200, body = UserResponse),
-    (status = 400, body = ErrorResponse),
+), request_body = UpdateUsernameReq, responses(
+    (status = 200, body = UserResp),
+    (status = 400, body = ErrorResp),
 ))]
 pub async fn update_username(
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
-    Json(payload): Json<UpdateUsernameRequest>,
+    Json(payload): Json<UpdateUsernameReq>,
 ) -> Result<impl IntoResponse, AppError> {
     let user = state
         .services()
         .user
         .update_username(id, payload.username)
         .await?;
-    let response = UserResponse::from(user);
+    let response = UserResp::from(user);
     Ok(Json(response))
 }
 
 #[utoipa::path(put, path="/{id}/password", params(
     ("id" = Pk, Path)
-), request_body = ChangePasswordRequest, responses(
-    (status = 200, body = MessageResponse),
-    (status = 400, body = ErrorResponse),
+), request_body = ChangePasswordReq, responses(
+    (status = 200, body = MessageResp),
+    (status = 400, body = ErrorResp),
 ))]
 pub async fn change_password(
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
-    Json(payload): Json<ChangePasswordRequest>,
+    Json(payload): Json<ChangePasswordReq>,
 ) -> Result<impl IntoResponse, AppError> {
     state
         .services()
         .user
         .change_password(id, &payload.old_password, &payload.new_password)
         .await?;
-    let response = MessageResponse {
+    let response = MessageResp {
         message: "Password changed successfully".to_string(),
     };
     Ok(Json(response))
@@ -124,15 +124,15 @@ pub async fn change_password(
 #[utoipa::path(delete, path="/{id}", params(
     ("id" = Pk, Path)
 ), responses(
-    (status = 200, body = MessageResponse),
-    (status = 400, body = ErrorResponse),
+    (status = 200, body = MessageResp),
+    (status = 400, body = ErrorResp),
 ))]
 pub async fn delete(
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
 ) -> Result<impl IntoResponse, AppError> {
     state.services().user.delete(id).await?;
-    let response = MessageResponse {
+    let response = MessageResp {
         message: "User deleted successfully".to_string(),
     };
     Ok(Json(response))
