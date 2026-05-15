@@ -1,61 +1,30 @@
 use crate::{
     bail,
-    config::AppConfig,
+    config::RawAppConfig,
     domain::{
         Services,
-        model::{DefaultRole, Perm, role::DEFAULT_ROLE_PERMISSIONS},
+        model::{DefaultRole, Perm},
     },
     error::{ErrorKind, Result},
 };
 
 pub async fn init_rbac(services: &Services) -> Result<()> {
-    println!("Initializing permissions...");
-
-    for perm in Perm::all() {
-        if let Err(e) = services.permission.create(perm).await {
-            if services.permission.find(perm).await?.is_some() {
-                println!("  Skipped {} (already exists)", perm.code());
-            } else {
-                return Err(e);
-            }
-        } else {
-            println!("  Created permission: {}", perm.code());
-        }
-    }
-
-    println!("\nInitializing roles...");
+    println!("Initializing roles...");
 
     for role in DefaultRole::all() {
         let name = role.name().to_owned();
         let desc = Some(role.description().to_owned());
-        match services.role.create(name, desc).await {
-            Ok(r) => println!("  Created role: {}", r.name),
+        let perms = role.default_permissions();
+        match services.role.create(name, desc, perms).await {
+            Ok(r) => println!(
+                "  Created role: {} with {} permission(s)",
+                r.name,
+                r.parse_perms().len()
+            ),
             Err(_) if services.role.find_by_name(role.name()).await?.is_some() => {
                 println!("  Skipped {} (already exists)", role.name());
             }
             Err(e) => return Err(e),
-        }
-    }
-
-    for (role, perms) in DEFAULT_ROLE_PERMISSIONS {
-        let Some(role_model) = services.role.find_by_name(role.name()).await? else {
-            bail!(
-                ErrorKind::NotFound,
-                "Role {} not found after init",
-                role.name()
-            );
-        };
-        println!("\nAssigning permissions to {} role...", role.name());
-        for perm in *perms {
-            let Some(perm_model) = services.permission.find(*perm).await? else {
-                println!("  Skipped {} (permission not found)", perm.code());
-                continue;
-            };
-            services
-                .role
-                .add_permission(role_model.id, perm_model.id)
-                .await?;
-            println!("  Added {} to {}", perm.code(), role.name());
         }
     }
 
@@ -102,9 +71,15 @@ pub async fn list_roles(services: &Services) -> Result<()> {
     let roles = services.role.list_all().await?;
 
     println!("Roles:");
-    println!("{:-<50}", "");
+    println!("{:-<80}", "");
     for role in roles {
-        println!("  {} - {}", role.name, role.description.unwrap_or_default());
+        let perms = role.perm_codes().join(", ");
+        println!(
+            "  {} - {} [{}]",
+            role.name,
+            role.description.unwrap_or_default(),
+            perms
+        );
     }
     Ok(())
 }
@@ -113,9 +88,20 @@ pub async fn create_role(
     services: &Services,
     name: String,
     description: Option<String>,
+    perm_codes: Option<String>,
 ) -> Result<()> {
-    let role = services.role.create(name, description).await?;
-    println!("Created role: {} (ID: {})", role.name, role.id);
+    let perms: Vec<Perm> = perm_codes
+        .unwrap_or_default()
+        .split(',')
+        .filter_map(|c| Perm::from_code(c.trim()))
+        .collect();
+    let role = services.role.create(name, description, &perms).await?;
+    println!(
+        "Created role: {} (ID: {}) with {} permission(s)",
+        role.name,
+        role.id,
+        perms.len()
+    );
     Ok(())
 }
 
@@ -129,36 +115,16 @@ pub async fn delete_role(services: &Services, name: String) -> Result<()> {
     Ok(())
 }
 
-pub async fn add_permission_to_role(
-    services: &Services,
-    role_name: String,
-    perm: Perm,
-) -> Result<()> {
-    let Some(role) = services.role.find_by_name(&role_name).await? else {
-        bail!(ErrorKind::NotFound, "Role not found");
-    };
-
-    let Some(permission) = services.permission.find(perm).await? else {
-        bail!(ErrorKind::NotFound, "Permission {} not found", perm.code());
-    };
-
-    services.role.add_permission(role.id, permission.id).await?;
-    println!("Added permission {} to role {}", perm.code(), role_name);
-    Ok(())
-}
-
-pub async fn list_permissions(services: &Services) -> Result<()> {
-    let permissions = services.permission.list_all().await?;
-
-    println!("Permissions:");
-    println!("{:-<60}", "");
-    for perm in permissions {
-        println!("  {} - {}", perm.code, perm.description.unwrap_or_default());
+pub async fn list_permissions() -> Result<()> {
+    println!("Available permissions:");
+    println!("{:-<40}", "");
+    for perm in Perm::all() {
+        println!("  {} - {}", perm.code(), perm.description());
     }
     Ok(())
 }
 
-pub fn print_config(config: &AppConfig) -> Result<()> {
+pub fn print_config(config: &RawAppConfig) -> Result<()> {
     let json = serde_json::to_string_pretty(config)?;
     println!("{}", json);
     Ok(())

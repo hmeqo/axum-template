@@ -1,3 +1,5 @@
+use std::fmt;
+
 use jsonwebtoken::{DecodingKey, EncodingKey, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use toasty::Db;
@@ -5,7 +7,10 @@ use uuid::Uuid;
 
 use crate::{
     bail,
-    domain::{db::Pk, model::{RefreshToken, User}},
+    domain::{
+        db::Pk,
+        model::{RefreshToken, User},
+    },
     error::{ErrorKind, Result, ResultExt},
 };
 
@@ -24,15 +29,31 @@ pub struct RotatedTokens {
     pub user: User,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TokenService {
     db: Db,
-    jwt_secret: String,
+    encoding: EncodingKey,
+    decoding: DecodingKey,
+    expires_in_seconds: u64,
+}
+
+impl fmt::Debug for TokenService {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TokenService")
+            .field("db", &self.db)
+            .field("expires_in_seconds", &self.expires_in_seconds)
+            .finish()
+    }
 }
 
 impl TokenService {
-    pub fn new(db: Db, jwt_secret: String) -> Self {
-        Self { db, jwt_secret }
+    pub fn new(db: Db, jwt_secret: String, expires_in_seconds: u64) -> Self {
+        Self {
+            db,
+            encoding: EncodingKey::from_secret(jwt_secret.as_ref()),
+            decoding: DecodingKey::from_secret(jwt_secret.as_ref()),
+            expires_in_seconds,
+        }
     }
 
     pub fn encode_access_token(&self, user: &User) -> Result<String> {
@@ -40,25 +61,17 @@ impl TokenService {
         let claims = Claims {
             sub: user.id,
             username: user.username.clone(),
-            exp: now + 3600,
+            exp: now + self.expires_in_seconds as usize,
             iat: now,
         };
-        encode(
-            &Default::default(),
-            &claims,
-            &EncodingKey::from_secret(self.jwt_secret.as_ref()),
-        )
-        .err_kind_msg(ErrorKind::Internal, "Token generation failed")
+        encode(&Default::default(), &claims, &self.encoding)
+            .err_kind_msg(ErrorKind::Internal, "Token generation failed")
     }
 
     pub fn decode_access_token(&self, token: &str) -> Result<Claims> {
-        decode::<Claims>(
-            token,
-            &DecodingKey::from_secret(self.jwt_secret.as_ref()),
-            &Validation::default(),
-        )
-        .map(|d| d.claims)
-        .err_kind_msg(ErrorKind::Unauthorized, "Invalid token")
+        decode::<Claims>(token, &self.decoding, &Validation::default())
+            .map(|d| d.claims)
+            .err_kind_msg(ErrorKind::Unauthorized, "Invalid token")
     }
 
     pub async fn generate_refresh_token(&self, user_id: Pk) -> Result<String> {
@@ -73,6 +86,21 @@ impl TokenService {
         .exec(&mut db)
         .await?;
         Ok(token)
+    }
+
+    pub async fn delete_all_refresh_tokens(&self, user_id: Pk) -> Result<()> {
+        let mut db = self.db.clone();
+        let tokens = RefreshToken::all()
+            .filter(RefreshToken::fields().user_id().eq(user_id))
+            .exec(&mut db)
+            .await?;
+        for t in &tokens {
+            RefreshToken::filter_by_id(t.id)
+                .delete()
+                .exec(&mut db)
+                .await?;
+        }
+        Ok(())
     }
 
     pub async fn rotate_refresh_token(&self, refresh_token_str: &str) -> Result<RotatedTokens> {

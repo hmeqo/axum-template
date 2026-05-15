@@ -12,12 +12,12 @@ use crate::{
 /// also support session cookie auth, trying JWT first then falling
 /// back to session.
 #[derive(Debug)]
-pub struct AuthCtx {
+pub struct JwtCtx {
     pub user_id: Pk,
     username: String,
 }
 
-impl AuthCtx {
+impl JwtCtx {
     pub fn username(&self) -> &str {
         &self.username
     }
@@ -27,7 +27,7 @@ impl AuthCtx {
     }
 }
 
-impl FromRequestParts<AppState> for AuthCtx {
+impl FromRequestParts<AppState> for JwtCtx {
     type Rejection = AppError;
 
     async fn from_request_parts(
@@ -41,12 +41,9 @@ impl FromRequestParts<AppState> for AuthCtx {
             .and_then(|v| v.strip_prefix("Bearer "))
             .ok_or(ErrorKind::Unauthorized)?;
 
-        let claims = state
-            .services()
-            .token
-            .decode_access_token(token)?;
+        let claims = state.srv().token.decode_access_token(token)?;
 
-        Ok(AuthCtx {
+        Ok(JwtCtx {
             user_id: claims.sub,
             username: claims.username,
         })

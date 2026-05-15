@@ -1,53 +1,19 @@
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
-use struct_patch::Patch;
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Patch)]
-#[patch(attribute(derive(Debug, Default, Clone, Serialize, Deserialize)))]
-#[patch(attribute(skip_serializing_none))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default, rename_all = "kebab-case")]
-pub struct AppConfig {
-    #[patch(name = "ServerConfigPatch")]
+pub struct RawAppConfig {
     pub server: ServerConfig,
-    #[patch(name = "LogConfigPatch")]
     pub log: LogConfig,
-    #[patch(name = "DatabaseConfigPatch")]
     pub database: DatabaseConfig,
-    #[patch(name = "AuthConfigPatch")]
     pub auth: AuthConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Patch)]
-#[patch(attribute(derive(Debug, Default, Clone, Serialize, Deserialize)))]
-#[patch(attribute(skip_serializing_none))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Patch)]
-#[patch(attribute(derive(Debug, Default, Clone, Serialize, Deserialize)))]
-#[patch(attribute(skip_serializing_none))]
-#[serde(default, rename_all = "kebab-case")]
-pub struct AuthConfig {
-    pub jwt_secret: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Patch)]
-#[patch(attribute(derive(Debug, Default, Clone, Serialize, Deserialize)))]
-#[patch(attribute(skip_serializing_none))]
-#[serde(default, rename_all = "kebab-case")]
-pub struct LogConfig {
-    pub level: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Patch)]
-#[patch(attribute(derive(Debug, Default, Clone, Serialize, Deserialize)))]
-#[patch(attribute(skip_serializing_none))]
-#[serde(default, rename_all = "kebab-case")]
-pub struct DatabaseConfig {
-    pub url: String,
 }
 
 impl Default for ServerConfig {
@@ -59,12 +25,58 @@ impl Default for ServerConfig {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct AuthConfig {
+    pub session: SessionConfig,
+    pub jwt: JwtConfig,
+}
+
 impl Default for AuthConfig {
     fn default() -> Self {
         Self {
-            jwt_secret: "change-me-in-production".to_string(),
+            session: SessionConfig::default(),
+            jwt: JwtConfig::default(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct SessionConfig {
+    pub cookie_name: String,
+    pub ttl_hours: u64,
+}
+
+impl Default for SessionConfig {
+    fn default() -> Self {
+        Self {
+            cookie_name: "session_token".to_string(),
+            ttl_hours: 24,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct JwtConfig {
+    pub secret: String,
+    pub expires_in_seconds: u64,
+}
+
+impl Default for JwtConfig {
+    fn default() -> Self {
+        Self {
+            secret: "change-me-in-production".to_string(),
+            expires_in_seconds: 3600,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct LogConfig {
+    pub level: String,
 }
 
 impl Default for LogConfig {
@@ -73,6 +85,12 @@ impl Default for LogConfig {
             level: "debug".to_string(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct DatabaseConfig {
+    pub url: String,
 }
 
 impl Default for DatabaseConfig {

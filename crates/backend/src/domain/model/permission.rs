@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator, IntoStaticStr};
-use toasty::Model;
 use utoipa::ToSchema;
-
-use super::RolePermission;
 
 #[derive(
     Debug,
@@ -11,6 +8,8 @@ use super::RolePermission;
     Copy,
     PartialEq,
     Eq,
+    PartialOrd,
+    Ord,
     Hash,
     EnumString,
     EnumIter,
@@ -96,43 +95,6 @@ impl Perm {
 
     pub fn all() -> Vec<Perm> {
         Self::iter().collect()
-    }
-}
-
-#[derive(Debug, Clone, Model)]
-pub struct Permission {
-    #[key]
-    #[auto]
-    pub id: i64,
-
-    #[unique]
-    pub code: String,
-
-    pub description: Option<String>,
-
-    #[auto]
-    pub created_at: jiff::Timestamp,
-
-    #[has_many]
-    pub role_permissions: toasty::HasMany<RolePermission>,
-}
-
-impl Permission {
-    pub fn matches_code(&self, code: &str) -> bool {
-        perms_match(&self.code, code)
-    }
-
-    pub fn permission_code(&self) -> String {
-        self.code.clone()
-    }
-}
-
-impl TryFrom<&Permission> for Perm {
-    type Error = String;
-
-    fn try_from(model: &Permission) -> Result<Self, Self::Error> {
-        Self::from_code(&model.code)
-            .ok_or_else(|| format!("Unknown permission code: {}", model.code))
     }
 }
 

@@ -16,6 +16,7 @@ mime_guess = { workspace = true }
 bon = { workspace = true }
 clap = { workspace = true }
 config = { workspace = true }
+dirs = { workspace = true }
 dotenvy = { workspace = true }
 inquire = { workspace = true }
 password-hash = { workspace = true }
@@ -24,7 +25,6 @@ serde = { workspace = true }
 serde_with = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }
-struct-patch = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
@@ -39,7 +39,8 @@ utoipa-scalar = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 uuid = { workspace = true }
 validator = { workspace = true }
-arc-swap = { workspace = true }
+derive_more = { workspace = true }
+
 jiff = { workspace = true }
 toasty = { workspace = true }
 toasty-cli = { workspace = true }

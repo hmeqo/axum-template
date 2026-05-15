@@ -8,21 +8,26 @@ pub use service::*;
 
 #[derive(Debug, Clone)]
 pub struct Services {
-    pub user: UserService,
-    pub role: RoleService,
-    pub permission: PermissionService,
-    pub auth: AuthService,
-    pub token: TokenService,
+    pub user: service::UserService,
+    pub role: service::RoleService,
+    pub auth: service::AuthService,
+    pub session: service::SessionService,
+    pub token: service::TokenService,
 }
 
 impl Services {
-    pub fn new(db: Db, jwt_secret: &str) -> Self {
+    pub fn new(
+        db: Db,
+        jwt_secret: &str,
+        jwt_expires_in_seconds: u64,
+        session_ttl_hours: u64,
+    ) -> Self {
         Self {
-            user: UserService::new(db.clone()),
-            role: RoleService::new(db.clone()),
-            permission: PermissionService::new(db.clone()),
-            auth: AuthService::new(db.clone()),
-            token: TokenService::new(db, jwt_secret.to_owned()),
+            user: service::UserService::new(db.clone()),
+            role: service::RoleService::new(db.clone()),
+            auth: service::AuthService::new(db.clone()),
+            session: service::SessionService::new(db.clone(), session_ttl_hours),
+            token: service::TokenService::new(db, jwt_secret.to_owned(), jwt_expires_in_seconds),
         }
     }
 }

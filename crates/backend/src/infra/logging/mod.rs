@@ -9,7 +9,8 @@ pub fn init_tracing(cfg: &LogConfig) {
     fs::create_dir_all("logs").ok();
     let file_appender = RollingFileAppender::new(Rotation::DAILY, "logs", "access.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-    Box::leak(Box::new(guard)); // keep worker alive for program lifetime
+    // keep worker alive for program lifetime
+    Box::leak(Box::new(guard));
 
     tracing_subscriber::registry()
         .with(

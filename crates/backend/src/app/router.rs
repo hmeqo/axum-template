@@ -15,7 +15,7 @@ use utoipa_scalar::{Scalar, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::{controller, middleware::cors};
-use crate::{app::AppState, config::AppConfig, error::Result, ext::EndpointRouterT};
+use crate::{app::AppState, config::RawAppConfig, error::Result, ext::EndpointRouterT};
 
 #[derive(RustEmbed)]
 #[folder = "static/"]
@@ -85,7 +85,8 @@ pub async fn create_router(state: AppState) -> Result<Router> {
     let router = OpenApiRouter::new()
         .merge(controller::chore::router())
         .mount(controller::auth::router())
-        .mount(controller::user::router());
+        .mount(controller::user::router())
+        .mount(controller::jwt_demo::router());
 
     let (router, api) = OpenApiRouter::new().nest("/api", router).split_for_parts();
 
@@ -103,7 +104,7 @@ pub async fn create_router(state: AppState) -> Result<Router> {
 }
 
 /// Create TCP listener for the server
-pub async fn create_listener(config: &AppConfig) -> Result<TcpListener> {
+pub async fn create_listener(config: &RawAppConfig) -> Result<TcpListener> {
     let addr = format!("{}:{}", config.server.host, config.server.port);
     Ok(TcpListener::bind(&addr).await?)
 }

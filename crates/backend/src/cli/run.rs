@@ -1,10 +1,10 @@
 use clap::Parser;
 
 use super::{
-    command::{Cli, Commands, PermissionCommands, RoleCommands},
+    command::{Cli, Commands, RoleCommands},
     command_impl,
 };
-use crate::{app::AppState, config::AppConfigManager, error::Result};
+use crate::{app::AppState, config::AppConfig, error::Result};
 
 pub async fn run() -> Result<()> {
     let _ = dotenvy::dotenv();
@@ -18,8 +18,8 @@ pub async fn run() -> Result<()> {
 
             match cmd {
                 Commands::Config => {
-                    let config = AppConfigManager::load()?;
-                    command_impl::print_config(&config.current())
+                    let cfg = AppConfig::load()?;
+                    command_impl::print_config(&cfg)
                 }
                 Commands::Init => command_impl::init_rbac(&services).await,
                 Commands::CreateSuperuser { username, password } => {
@@ -27,26 +27,23 @@ pub async fn run() -> Result<()> {
                 }
                 Commands::Role(cmd) => match cmd {
                     RoleCommands::List => command_impl::list_roles(&services).await,
-                    RoleCommands::Create { name, description } => {
-                        command_impl::create_role(&services, name, description).await
-                    }
+                    RoleCommands::Create {
+                        name,
+                        description,
+                        perms,
+                    } => command_impl::create_role(&services, name, description, perms).await,
                     RoleCommands::Delete { name } => {
                         command_impl::delete_role(&services, name).await
                     }
-                    RoleCommands::AddPermission { role, perm } => {
-                        command_impl::add_permission_to_role(&services, role, perm).await
-                    }
                 },
-                Commands::Permission(cmd) => match cmd {
-                    PermissionCommands::List => command_impl::list_permissions(&services).await,
-                },
+                Commands::Perms => command_impl::list_permissions().await,
             }
         }
     }
 }
 
 async fn get_services() -> Result<crate::domain::Services> {
-    let config = AppConfigManager::load()?;
-    let app_state = AppState::from_config(config).await?;
+    let cfg = AppConfig::load()?;
+    let app_state = AppState::new(cfg).await?;
     Ok(app_state.services)
 }

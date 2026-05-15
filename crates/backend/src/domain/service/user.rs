@@ -1,6 +1,7 @@
 use toasty::Db;
 
 use crate::{
+    bail,
     domain::{db::Pk, model::User},
     error::{ErrorKind, Result},
     util::password,
@@ -19,7 +20,7 @@ impl UserService {
     pub async fn create(&self, username: String, password: String) -> Result<User> {
         let mut db = self.db.clone();
         if Self::exists_by_username_inner(&mut db, &username).await? {
-            return Err(ErrorKind::AlreadyExists.msg("Username already exists"));
+            bail!(ErrorKind::AlreadyExists, "Username already exists");
         }
 
         let hashed = password::hash(&password)?;
@@ -74,7 +75,7 @@ impl UserService {
         if new_username != user.username
             && Self::exists_by_username_inner(&mut db, &new_username).await?
         {
-            return Err(ErrorKind::AlreadyExists.msg("Username already exists"));
+            bail!(ErrorKind::AlreadyExists, "Username already exists");
         }
 
         user.update().username(new_username).exec(&mut db).await?;
@@ -91,7 +92,7 @@ impl UserService {
         let mut user = User::get_by_id(&mut db, &id).await?;
 
         if !password::verify(old_password, &user.password)? {
-            return Err(ErrorKind::InvalidCredentials.msg("Invalid old password"));
+            bail!(ErrorKind::InvalidCredentials, "Invalid old password");
         }
 
         let hashed = password::hash(new_password)?;

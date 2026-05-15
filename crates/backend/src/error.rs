@@ -215,14 +215,14 @@ impl Display for AppError {
 }
 
 pub trait OptionAppExt<T> {
-    fn ok_or_err(self, kind: ErrorKind) -> Result<T>;
+    // fn ok_or_err(self, kind: ErrorKind) -> Result<T>;
     fn ok_or_err_msg(self, kind: ErrorKind, msg: impl Into<String>) -> Result<T>;
 }
 
 impl<T> OptionAppExt<T> for Option<T> {
-    fn ok_or_err(self, kind: ErrorKind) -> Result<T> {
-        self.ok_or_else(|| kind.to_error())
-    }
+    // fn ok_or_err(self, kind: ErrorKind) -> Result<T> {
+    //     self.ok_or_else(|| kind.to_error())
+    // }
 
     fn ok_or_err_msg(self, kind: ErrorKind, msg: impl Into<String>) -> Result<T> {
         self.ok_or_else(|| kind.msg(msg))
@@ -273,15 +273,16 @@ macro_rules! register_errors {
 }
 
 register_errors! {
-    std::io::Error                                 => ErrorKind::Internal;
-    serde_json::Error                              => ErrorKind::DataParse;
-    config::ConfigError                            => ErrorKind::Config;
-    toasty::Error                                  => ErrorKind::Internal;
-    inquire::error::InquireError                   => ErrorKind::Internal;
-    axum::extract::rejection::PathRejection        => ErrorKind::InvalidParameter;
-    axum::extract::rejection::QueryRejection       => ErrorKind::InvalidParameter;
-    axum::extract::rejection::JsonRejection        => ErrorKind::DataParse;
-    validator::ValidationErrors                    => ErrorKind::ValidationFailed, "Validation failed";
+    std::io::Error                           => ErrorKind::Internal;
+    serde_json::Error                        => ErrorKind::DataParse;
+    config::ConfigError                      => ErrorKind::Config;
+    toasty::Error                            => ErrorKind::Internal;
+    inquire::error::InquireError             => ErrorKind::Internal;
+    axum::extract::rejection::PathRejection  => ErrorKind::InvalidParameter;
+    axum::extract::rejection::QueryRejection => ErrorKind::InvalidParameter;
+    axum::extract::rejection::JsonRejection  => ErrorKind::DataParse;
+    validator::ValidationErrors              => ErrorKind::ValidationFailed, "Validation failed";
+    tokio::task::JoinError                   => ErrorKind::Internal;
 }
 
 #[macro_export]

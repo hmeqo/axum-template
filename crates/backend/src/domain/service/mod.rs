@@ -1,11 +1,11 @@
 pub mod auth;
-pub mod permission;
 pub mod role;
+pub mod session;
 pub mod token;
 pub mod user;
 
 pub use auth::AuthService;
-pub use permission::PermissionService;
 pub use role::RoleService;
+pub use session::SessionService;
 pub use token::TokenService;
 pub use user::UserService;

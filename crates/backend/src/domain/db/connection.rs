@@ -7,10 +7,9 @@ pub async fn init_db(url: &str) -> Result<Db> {
         .models(toasty::models!(
             model::User,
             model::Role,
-            model::Permission,
             model::UserRole,
-            model::RolePermission,
             model::RefreshToken,
+            model::Session,
         ))
         .connect(url)
         .await?;

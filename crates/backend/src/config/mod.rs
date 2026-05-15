@@ -1,20 +1,36 @@
-pub mod manager;
+pub mod env;
+pub mod meta;
+pub mod paths;
 pub mod schema;
 
-pub use manager::*;
+use std::sync::Arc;
+
+use config::{Environment, File};
+use derive_more::Deref;
+pub use meta::*;
 pub use schema::*;
 
-use crate::{Result, dirs};
+use crate::error::Result;
 
-impl Configurable for AppConfig {
-    type Patch = AppConfigPatch;
+#[derive(Debug, Clone, Deref)]
+pub struct AppConfig {
+    inner: Arc<RawAppConfig>,
 }
 
-pub type AppConfigManager = Config<AppConfig>;
+impl AppConfig {
+    pub fn new(config: RawAppConfig) -> Self {
+        Self {
+            inner: Arc::new(config),
+        }
+    }
 
-impl AppConfigManager {
-    /// Load config from the default path (dirs::CONFIG_TOML).
     pub fn load() -> Result<Self> {
-        Self::from_file(dirs::CONFIG_TOML)
+        let raw: RawAppConfig = config::Config::builder()
+            .add_source(config::Config::try_from(&RawAppConfig::default())?)
+            .add_source(File::with_name(&paths::Paths::config_file().to_string_lossy()).required(false))
+            .add_source(Environment::with_prefix(meta::ENV_PREFIX.as_str()).separator("__"))
+            .build()?
+            .try_deserialize()?;
+        Ok(Self::new(raw))
     }
 }

@@ -1,7 +1,5 @@
 use clap::{Parser, Subcommand};
 
-use crate::domain::model::Perm;
-
 #[derive(Parser)]
 #[command(name = env!("CARGO_CRATE_NAME"))]
 pub struct Cli {
@@ -14,7 +12,7 @@ pub enum Commands {
     /// Print configuration as JSON
     Config,
 
-    /// Initialize default roles and permissions
+    /// Initialize default roles with permissions
     Init,
 
     /// Create a superuser with all permissions
@@ -32,9 +30,8 @@ pub enum Commands {
     #[command(subcommand)]
     Role(RoleCommands),
 
-    /// Manage permissions
-    #[command(subcommand)]
-    Permission(PermissionCommands),
+    /// List all available permissions
+    Perms,
 }
 
 #[derive(Subcommand)]
@@ -51,6 +48,10 @@ pub enum RoleCommands {
         /// Role description
         #[arg(short, long)]
         description: Option<String>,
+
+        /// Permission codes (e.g. "user:read,user:write")
+        #[arg(short, long)]
+        perms: Option<String>,
     },
 
     /// Delete a role
@@ -59,21 +60,4 @@ pub enum RoleCommands {
         #[arg(short, long)]
         name: String,
     },
-
-    /// Add permission to role
-    AddPermission {
-        /// Role name
-        #[arg(short, long)]
-        role: String,
-
-        /// Resource name
-        #[arg(long)]
-        perm: Perm,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum PermissionCommands {
-    /// List all permissions
-    List,
 }

@@ -1,9 +1,10 @@
 use toasty::Db;
 
 use crate::{
+    bail,
     domain::{
         db::Pk,
-        model::{Permission, Role, RolePermission, UserRole},
+        model::{Perm, Role, UserRole},
     },
     error::{ErrorKind, Result},
 };
@@ -18,15 +19,25 @@ impl RoleService {
         Self { db }
     }
 
-    pub async fn create(&self, name: String, description: Option<String>) -> Result<Role> {
+    pub async fn create(
+        &self,
+        name: String,
+        description: Option<String>,
+        perms: &[Perm],
+    ) -> Result<Role> {
         let mut db = self.db.clone();
         if Self::exists_by_name_inner(&mut db, &name).await? {
-            return Err(ErrorKind::AlreadyExists.msg("Role already exists"));
+            bail!(ErrorKind::AlreadyExists, "Role already exists");
         }
 
-        Ok(toasty::create!(Role { name, description })
-            .exec(&mut db)
-            .await?)
+        let permissions = serde_json::to_string(perms).unwrap_or_default();
+        Ok(toasty::create!(Role {
+            name,
+            description,
+            permissions
+        })
+        .exec(&mut db)
+        .await?)
     }
 
     pub async fn find_by_id(&self, id: Pk) -> Result<Option<Role>> {
@@ -75,7 +86,7 @@ impl RoleService {
         let mut role = Role::get_by_id(&mut db, &id).await?;
 
         if new_name != role.name && Self::exists_by_name_inner(&mut db, &new_name).await? {
-            return Err(ErrorKind::AlreadyExists.msg("Role name already exists"));
+            bail!(ErrorKind::AlreadyExists, "Role name already exists");
         }
 
         role.update().name(new_name).exec(&mut db).await?;
@@ -97,63 +108,6 @@ impl RoleService {
         Ok(())
     }
 
-    pub async fn add_permission(&self, role_id: Pk, perm_id: Pk) -> Result<()> {
-        let mut db = self.db.clone();
-        let _ = Role::get_by_id(&mut db, &role_id).await?;
-        let _ = Permission::get_by_id(&mut db, &perm_id).await?;
-
-        let existing = RolePermission::all()
-            .filter(RolePermission::fields().role_id().eq(role_id))
-            .filter(RolePermission::fields().permission_id().eq(perm_id))
-            .exec(&mut db)
-            .await?;
-
-        if !existing.is_empty() {
-            return Err(ErrorKind::AlreadyExists.msg("Permission already assigned to role"));
-        }
-
-        toasty::create!(RolePermission {
-            role_id,
-            permission_id: perm_id
-        })
-        .exec(&mut db)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn remove_permission(&self, role_id: Pk, perm_id: Pk) -> Result<()> {
-        let mut db = self.db.clone();
-        let rps = RolePermission::all()
-            .filter(RolePermission::fields().role_id().eq(role_id))
-            .filter(RolePermission::fields().permission_id().eq(perm_id))
-            .exec(&mut db)
-            .await?;
-
-        for rp in &rps {
-            RolePermission::filter_by_id(rp.id)
-                .delete()
-                .exec(&mut db)
-                .await?;
-        }
-        Ok(())
-    }
-
-    pub async fn get_permissions(&self, role_id: Pk) -> Result<Vec<Permission>> {
-        let mut db = self.db.clone();
-        let rps = RolePermission::all()
-            .filter(RolePermission::fields().role_id().eq(role_id))
-            .exec(&mut db)
-            .await?;
-
-        let mut perms = Vec::new();
-        for rp in &rps {
-            if let Ok(p) = Permission::get_by_id(&mut db, &rp.permission_id).await {
-                perms.push(p);
-            }
-        }
-        Ok(perms)
-    }
-
     pub async fn assign_to_user(&self, user_id: Pk, role_id: Pk) -> Result<()> {
         let mut db = self.db.clone();
         let existing = UserRole::all()
@@ -163,7 +117,7 @@ impl RoleService {
             .await?;
 
         if !existing.is_empty() {
-            return Err(ErrorKind::AlreadyExists.msg("Role already assigned to user"));
+            bail!(ErrorKind::AlreadyExists, "Role already assigned to user");
         }
 
         toasty::create!(UserRole { user_id, role_id })
@@ -190,29 +144,21 @@ impl RoleService {
         let mut db = self.db.clone();
         let urs = UserRole::all()
             .filter(UserRole::fields().user_id().eq(user_id))
+            .include(UserRole::fields().role())
             .exec(&mut db)
             .await?;
 
-        let mut roles = Vec::new();
-        for ur in &urs {
-            if let Ok(role) = Role::get_by_id(&mut db, &ur.role_id).await {
-                roles.push(role);
-            }
-        }
+        let mut roles: Vec<Role> = urs.iter().map(|ur| ur.role.get().clone()).collect();
+        roles.sort_by_key(|r| r.id);
+        roles.dedup_by_key(|r| r.id);
         Ok(roles)
     }
 
-    pub async fn get_user_permissions(&self, user_id: Pk) -> Result<Vec<Permission>> {
+    pub async fn get_user_permissions(&self, user_id: Pk) -> Result<Vec<Perm>> {
         let roles = self.get_user_roles(user_id).await?;
-        let mut all_permissions = Vec::new();
-
-        for role in &roles {
-            let perms = self.get_permissions(role.id).await?;
-            all_permissions.extend(perms);
-        }
-
-        all_permissions.sort_by_key(|p| p.id);
-        all_permissions.dedup_by_key(|p| p.id);
-        Ok(all_permissions)
+        let mut perms: Vec<Perm> = roles.iter().flat_map(|r| r.parse_perms()).collect();
+        perms.sort();
+        perms.dedup();
+        Ok(perms)
     }
 }

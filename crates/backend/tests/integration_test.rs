@@ -6,14 +6,14 @@ use axum::{
 };
 use backend::{
     app::{router::create_router, state::AppState},
-    config::AppConfigManager,
+    config::AppConfig,
 };
 use serde_json::{Value, json};
 use tower::ServiceExt;
 
 async fn test_router() -> Result<Router> {
-    let config = AppConfigManager::load()?;
-    let app_state = AppState::from_config(config).await?;
+    let cfg = AppConfig::load()?;
+    let app_state = AppState::new(cfg).await?;
     Ok(create_router(app_state).await?)
 }
 

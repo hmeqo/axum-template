@@ -7,10 +7,11 @@ use crate::{
         dto::{request::*, response::*},
         error::ErrorResp,
         helper::{
-            auth::AuthCtx,
+            auth::JwtCtx,
             extractor::{AppJson, AppPath, AppQuery},
         },
     },
+    bail,
     domain::{db::Pk, model::Perm},
     error::{AppError, ErrorKind},
     ext::{EndpointRouter, EndpointRouterT, OpenApiRouterExt},
@@ -30,8 +31,8 @@ pub async fn list(
     let page = pagination.page;
     let per_page = pagination.per_page;
 
-    let users = state.services().user.list(page, per_page).await?;
-    let total = state.services().user.count().await?;
+    let users = state.srv().user.list(page, per_page).await?;
+    let total = state.srv().user.count().await?;
 
     let user_responses = users.into_iter().map(UserResp::from).collect();
 
@@ -50,21 +51,17 @@ pub async fn list(
     (status = 400, body = ErrorResp),
 ))]
 pub async fn create(
-    ctx: AuthCtx,
+    ctx: JwtCtx,
     State(state): State<AppState>,
     AppJson(payload): AppJson<CreateUserReq>,
 ) -> Result<impl IntoResponse, AppError> {
-    let perms = state
-        .services()
-        .role
-        .get_user_permissions(ctx.user_id)
-        .await?;
-    if !perms.iter().any(|p| p.matches_code(Perm::UserWrite.code())) {
-        return Err(ErrorKind::PermissionDenied.msg("Insufficient permissions"));
+    let perms = state.srv().role.get_user_permissions(ctx.user_id).await?;
+    if !perms.iter().any(|p| p.matches(Perm::UserWrite.code())) {
+        bail!(ErrorKind::PermissionDenied, "Insufficient permissions");
     }
 
     let user = state
-        .services()
+        .srv()
         .user
         .create(payload.username, payload.password)
         .await?;
@@ -82,7 +79,7 @@ pub async fn get(
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = state.services().user.get_by_id(id).await?;
+    let user = state.srv().user.get_by_id(id).await?;
     let response = UserResp::from(user);
     Ok(Json(response))
 }
@@ -99,7 +96,7 @@ pub async fn update_username(
     Json(payload): Json<UpdateUsernameReq>,
 ) -> Result<impl IntoResponse, AppError> {
     let user = state
-        .services()
+        .srv()
         .user
         .update_username(id, payload.username)
         .await?;
@@ -119,7 +116,7 @@ pub async fn change_password(
     Json(payload): Json<ChangePasswordReq>,
 ) -> Result<impl IntoResponse, AppError> {
     state
-        .services()
+        .srv()
         .user
         .change_password(id, &payload.old_password, &payload.new_password)
         .await?;
@@ -139,7 +136,7 @@ pub async fn delete(
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
 ) -> Result<impl IntoResponse, AppError> {
-    state.services().user.delete(id).await?;
+    state.srv().user.delete(id).await?;
     let response = MessageResp {
         message: "User deleted successfully".to_string(),
     };
