@@ -1,8 +1,6 @@
 use std::{ops::Deref, path::Path, sync::Arc};
 
-use crate::dirs;
-
-use arc_swap::ArcSwap;
+use arc_swap::{ArcSwap, Guard};
 use config::{Environment, File};
 use serde::{Deserialize, Serialize};
 use struct_patch::Patch;
@@ -37,11 +35,6 @@ pub struct Config<T: Configurable> {
 }
 
 impl<T: Configurable> Config<T> {
-    /// Load config from the default path (dirs::CONFIG_TOML).
-    pub fn default() -> Result<Self> {
-        Self::from_file(dirs::CONFIG_TOML)
-    }
-
     pub fn from_file(file_path: &str) -> Result<Self> {
         let intent = Self::load_patch_from_file(file_path)?;
 
@@ -64,9 +57,9 @@ impl<T: Configurable> Config<T> {
         Ok(self)
     }
 
-    /// 获取当前配置的只读快照
-    pub fn load(&self) -> Arc<T> {
-        self.inner.current.load_full()
+    /// 获取当前配置
+    pub fn current(&self) -> Guard<Arc<T>> {
+        self.inner.current.load()
     }
 
     /// 更新配置意图（仅修改内存，需调用 save 持久化）

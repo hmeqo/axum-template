@@ -11,12 +11,11 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Print configuration as JSON
+    Config,
+
     /// Initialize default roles and permissions
-    Init {
-        /// Force re-initialization (will not duplicate existing data)
-        #[arg(short, long)]
-        force: bool,
-    },
+    Init,
 
     /// Create a superuser with all permissions
     CreateSuperuser {
@@ -36,9 +35,6 @@ pub enum Commands {
     /// Manage permissions
     #[command(subcommand)]
     Permission(PermissionCommands),
-
-    /// Print configuration as JSON
-    Config,
 }
 
 #[derive(Subcommand)]

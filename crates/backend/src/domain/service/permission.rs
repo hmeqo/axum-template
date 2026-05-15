@@ -48,7 +48,10 @@ impl PermissionService {
 
     pub async fn find(&self, perm: Perm) -> Result<Option<Permission>> {
         let mut db = self.db.clone();
-        Ok(Permission::filter_by_code(perm.code()).get(&mut db).await.ok())
+        Ok(Permission::filter_by_code(perm.code())
+            .get(&mut db)
+            .await
+            .ok())
     }
 
     pub async fn list(&self, page: u64, per_page: u64) -> Result<Vec<Permission>> {

@@ -277,8 +277,25 @@ register_errors! {
     serde_json::Error                              => ErrorKind::DataParse;
     config::ConfigError                            => ErrorKind::Config;
     toasty::Error                                  => ErrorKind::Internal;
+    inquire::error::InquireError                   => ErrorKind::Internal;
     axum::extract::rejection::PathRejection        => ErrorKind::InvalidParameter;
     axum::extract::rejection::QueryRejection       => ErrorKind::InvalidParameter;
     axum::extract::rejection::JsonRejection        => ErrorKind::DataParse;
     validator::ValidationErrors                    => ErrorKind::ValidationFailed, "Validation failed";
+}
+
+#[macro_export]
+macro_rules! bail {
+    ($msg:literal $(,)?) => {
+        return ::core::result::Result::Err($crate::ErrorKind::Internal.msg($msg))
+    };
+    ($fmt:literal, $($arg:tt)+) => {
+        return ::core::result::Result::Err($crate::ErrorKind::Internal.msg(format!($fmt, $($arg)+)))
+    };
+    ($kind:expr $(,)?) => {
+        return ::core::result::Result::Err($crate::ErrorKind::to_error($kind))
+    };
+    ($kind:expr, $($arg:tt)+) => {
+        return ::core::result::Result::Err($crate::ErrorKind::msg($kind, format!($($arg)+)))
+    };
 }

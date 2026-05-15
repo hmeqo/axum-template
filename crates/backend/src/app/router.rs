@@ -14,15 +14,8 @@ use utoipa_axum::router::OpenApiRouter;
 use utoipa_scalar::{Scalar, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::controller;
-use crate::{
-    app::AppState,
-    config::AppConfig,
-    error::Result,
-    ext::EndpointRouterT,
-};
-
-use super::middleware::cors;
+use super::{controller, middleware::cors};
+use crate::{app::AppState, config::AppConfig, error::Result, ext::EndpointRouterT};
 
 #[derive(RustEmbed)]
 #[folder = "static/"]

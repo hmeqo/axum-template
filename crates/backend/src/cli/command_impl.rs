@@ -1,50 +1,61 @@
-use anyhow::Result;
-
 use crate::{
+    bail,
     config::AppConfig,
     domain::{
         Services,
         model::{DefaultRole, Perm, role::DEFAULT_ROLE_PERMISSIONS},
     },
+    error::{ErrorKind, Result},
 };
 
-pub async fn init_rbac(services: &Services, _force: bool) -> Result<()> {
+pub async fn init_rbac(services: &Services) -> Result<()> {
     println!("Initializing permissions...");
 
     for perm in Perm::all() {
-        match services.permission.create(perm).await {
-            Ok(p) => println!("  Created permission: {}", p.code),
-            Err(e) => println!("  Skipped {} ({})", perm.code(), e),
+        if let Err(e) = services.permission.create(perm).await {
+            if services.permission.find(perm).await?.is_some() {
+                println!("  Skipped {} (already exists)", perm.code());
+            } else {
+                return Err(e);
+            }
+        } else {
+            println!("  Created permission: {}", perm.code());
         }
     }
 
     println!("\nInitializing roles...");
 
     for role in DefaultRole::all() {
-        match services
-            .role
-            .create(role.name().to_owned(), Some(role.description().to_owned()))
-            .await
-        {
+        let name = role.name().to_owned();
+        let desc = Some(role.description().to_owned());
+        match services.role.create(name, desc).await {
             Ok(r) => println!("  Created role: {}", r.name),
-            Err(e) => println!("  Skipped {} ({})", role.name(), e),
+            Err(_) if services.role.find_by_name(role.name()).await?.is_some() => {
+                println!("  Skipped {} (already exists)", role.name());
+            }
+            Err(e) => return Err(e),
         }
     }
 
     for (role, perms) in DEFAULT_ROLE_PERMISSIONS {
-        if let Ok(Some(role_model)) = services.role.find_by_name(role.name()).await {
-            println!("\nAssigning permissions to {} role...", role.name());
-            for perm in *perms {
-                if let Ok(Some(perm_model)) = services.permission.find(*perm).await
-                    && services
-                        .role
-                        .add_permission(role_model.id, perm_model.id)
-                        .await
-                        .is_ok()
-                {
-                    println!("  Added {} to {}", perm.code(), role.name());
-                }
-            }
+        let Some(role_model) = services.role.find_by_name(role.name()).await? else {
+            bail!(
+                ErrorKind::NotFound,
+                "Role {} not found after init",
+                role.name()
+            );
+        };
+        println!("\nAssigning permissions to {} role...", role.name());
+        for perm in *perms {
+            let Some(perm_model) = services.permission.find(*perm).await? else {
+                println!("  Skipped {} (permission not found)", perm.code());
+                continue;
+            };
+            services
+                .role
+                .add_permission(role_model.id, perm_model.id)
+                .await?;
+            println!("  Added {} to {}", perm.code(), role.name());
         }
     }
 
@@ -71,7 +82,10 @@ pub async fn create_superuser(
     println!("  User created with ID: {}", user.id);
 
     let Some(superuser_role) = services.role.find_by_name("superuser").await? else {
-        anyhow::bail!("Superuser role not found. Run 'init' first.")
+        bail!(
+            ErrorKind::NotFound,
+            "Superuser role not found. Run 'init' first."
+        );
     };
 
     services
@@ -107,7 +121,7 @@ pub async fn create_role(
 
 pub async fn delete_role(services: &Services, name: String) -> Result<()> {
     let Some(role) = services.role.find_by_name(&name).await? else {
-        anyhow::bail!("Role not found")
+        bail!(ErrorKind::NotFound, "Role not found");
     };
 
     services.role.delete(role.id).await?;
@@ -121,11 +135,11 @@ pub async fn add_permission_to_role(
     perm: Perm,
 ) -> Result<()> {
     let Some(role) = services.role.find_by_name(&role_name).await? else {
-        anyhow::bail!("Role not found")
+        bail!(ErrorKind::NotFound, "Role not found");
     };
 
     let Some(permission) = services.permission.find(perm).await? else {
-        anyhow::bail!("Permission not found")
+        bail!(ErrorKind::NotFound, "Permission {} not found", perm.code());
     };
 
     services.role.add_permission(role.id, permission.id).await?;

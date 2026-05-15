@@ -6,7 +6,10 @@ use crate::{
         AppState,
         dto::{request::*, response::*},
         error::ErrorResp,
-        helper::{auth::AuthCtx, extractor::{AppJson, AppPath, AppQuery}},
+        helper::{
+            auth::AuthCtx,
+            extractor::{AppJson, AppPath, AppQuery},
+        },
     },
     domain::{db::Pk, model::Perm},
     error::{AppError, ErrorKind},
@@ -51,7 +54,11 @@ pub async fn create(
     State(state): State<AppState>,
     AppJson(payload): AppJson<CreateUserReq>,
 ) -> Result<impl IntoResponse, AppError> {
-    let perms = state.services().role.get_user_permissions(ctx.user_id).await?;
+    let perms = state
+        .services()
+        .role
+        .get_user_permissions(ctx.user_id)
+        .await?;
     if !perms.iter().any(|p| p.matches_code(Perm::UserWrite.code())) {
         return Err(ErrorKind::PermissionDenied.msg("Insufficient permissions"));
     }

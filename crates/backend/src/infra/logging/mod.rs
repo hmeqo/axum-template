@@ -8,6 +8,8 @@ use crate::config::LogConfig;
 pub fn init_tracing(cfg: &LogConfig) {
     fs::create_dir_all("logs").ok();
     let file_appender = RollingFileAppender::new(Rotation::DAILY, "logs", "access.log");
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    Box::leak(Box::new(guard)); // keep worker alive for program lifetime
 
     tracing_subscriber::registry()
         .with(
@@ -20,11 +22,15 @@ pub fn init_tracing(cfg: &LogConfig) {
                 .into()
             }),
         )
-        .with(tracing_subscriber::fmt::layer().with_writer(std::io::stdout))
         .with(
             tracing_subscriber::fmt::layer()
-                .with_ansi(false)
-                .with_writer(file_appender),
+                .with_ansi(true)
+                .with_writer(std::io::stdout),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .json()
+                .with_writer(non_blocking),
         )
         .init();
 }

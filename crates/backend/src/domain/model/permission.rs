@@ -52,6 +52,21 @@ pub enum Perm {
     RoleAll,
 }
 
+pub fn perms_match(self_code: &str, target_code: &str) -> bool {
+    if self_code == "*" {
+        return true;
+    }
+    if self_code == target_code {
+        return true;
+    }
+    if let Some(prefix) = self_code.strip_suffix(":*")
+        && let Some(target_prefix) = target_code.split(':').next()
+    {
+        return prefix == target_prefix;
+    }
+    false
+}
+
 impl Perm {
     pub fn from_code(code: &str) -> Option<Self> {
         code.parse().ok()
@@ -76,23 +91,7 @@ impl Perm {
     }
 
     pub fn matches(&self, target_code: &str) -> bool {
-        let self_code = self.code();
-
-        if self_code == Perm::All.code() {
-            return true;
-        }
-
-        if self_code == target_code {
-            return true;
-        }
-
-        if let Some(prefix) = self_code.strip_suffix(":*") {
-            if let Some(target_prefix) = target_code.split(':').next() {
-                return prefix == target_prefix;
-            }
-        }
-
-        false
+        perms_match(self.code(), target_code)
     }
 
     pub fn all() -> Vec<Perm> {
@@ -120,21 +119,7 @@ pub struct Permission {
 
 impl Permission {
     pub fn matches_code(&self, code: &str) -> bool {
-        if self.code == "*" {
-            return true;
-        }
-
-        if self.code == code {
-            return true;
-        }
-
-        if let Some(prefix) = self.code.strip_suffix(":*") {
-            if let Some(target_prefix) = code.split(':').next() {
-                return prefix == target_prefix;
-            }
-        }
-
-        false
+        perms_match(&self.code, code)
     }
 
     pub fn permission_code(&self) -> String {
@@ -153,8 +138,9 @@ impl TryFrom<&Permission> for Perm {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use strum::IntoEnumIterator;
+
+    use super::*;
 
     #[test]
     fn test_permissions_consistency() {

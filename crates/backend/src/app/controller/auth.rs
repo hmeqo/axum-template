@@ -6,9 +6,9 @@ use crate::{
         AppState,
         dto::{request::*, response::*},
         error::ErrorResp,
-        helper::{auth, auth::AuthCtx, extractor::AppJson},
+        helper::{auth::AuthCtx, extractor::AppJson},
     },
-    domain::model::{Perm, RefreshToken},
+    domain::model::Perm,
     error::{AppError, ErrorKind},
     ext::{EndpointRouter, EndpointRouterT, OpenApiRouterExt},
 };
@@ -28,22 +28,12 @@ pub async fn login(
         .await?
         .ok_or(ErrorKind::InvalidCredentials)?;
 
-    let config = state.config.load();
-    let access_token =
-        auth::encode_access_token(user.id, &user.username, &config.auth.jwt_secret)
-            .map_err(|e| ErrorKind::Internal.msg(format!("Token generation failed: {e}")))?;
-
-    let refresh_token = auth::generate_refresh_token();
-    let expires_at = jiff::Timestamp::now() + jiff::Span::new().days(30);
-
-    let mut db = state.domain.db.clone();
-    toasty::create!(RefreshToken {
-        user_id: user.id,
-        token: refresh_token.clone(),
-        expires_at,
-    })
-    .exec(&mut db)
-    .await?;
+    let access_token = state.services().token.encode_access_token(&user)?;
+    let refresh_token = state
+        .services()
+        .token
+        .generate_refresh_token(user.id)
+        .await?;
 
     let permissions = state
         .services()
@@ -74,40 +64,15 @@ pub async fn refresh(
     State(state): State<AppState>,
     AppJson(payload): AppJson<RefreshReq>,
 ) -> Result<impl IntoResponse, AppError> {
-    let mut db = state.domain.db.clone();
-
-    // Find and delete the refresh token (single-use)
-    let stored = match RefreshToken::filter_by_token(&payload.refresh_token).get(&mut db).await {
-        Ok(t) => t,
-        Err(_) => return Err(ErrorKind::Unauthorized.msg("Invalid refresh token")),
-    };
-    RefreshToken::filter_by_id(stored.id).delete().exec(&mut db).await?;
-
-    let now = jiff::Timestamp::now();
-    if stored.expires_at < now {
-        return Err(ErrorKind::Unauthorized.msg("Refresh token expired"));
-    }
-
-    let user = state.services().user.get_by_id(stored.user_id).await?;
-    let config = state.config.load();
-    let access_token =
-        auth::encode_access_token(user.id, &user.username, &config.auth.jwt_secret)
-            .map_err(|e| ErrorKind::Internal.msg(format!("Token generation failed: {e}")))?;
-
-    let new_refresh_token = auth::generate_refresh_token();
-    let expires_at = jiff::Timestamp::now() + jiff::Span::new().days(30);
-
-    toasty::create!(RefreshToken {
-        user_id: user.id,
-        token: new_refresh_token.clone(),
-        expires_at,
-    })
-    .exec(&mut db)
-    .await?;
+    let rotated = state
+        .services()
+        .token
+        .rotate_refresh_token(&payload.refresh_token)
+        .await?;
 
     Ok(Json(RefreshResp {
-        access_token,
-        refresh_token: new_refresh_token,
+        access_token: rotated.access_token,
+        refresh_token: rotated.refresh_token,
     }))
 }
 
