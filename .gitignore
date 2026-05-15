@@ -60,4 +60,4 @@ Cargo.lock
 config/local.toml
 *.db
 logs/
-.backend
+.axum-template

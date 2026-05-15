@@ -1,5 +1,5 @@
 use anyhow::Result;
-use backend::{config::AppConfig, domain::model};
+use axum_template::{config::AppConfig, domain::model};
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -36,4 +36,8 @@ impl Paths {
     pub fn config_file() -> PathBuf {
         Self::config_dir().join("config.toml")
     }
+
+    pub fn log_dir() -> PathBuf {
+        Self::data_dir().join("logs")
+    }
 }

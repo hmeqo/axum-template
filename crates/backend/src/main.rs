@@ -1,4 +1,4 @@
-use backend::{Result, cli};
+use axum_template::{Result, cli};
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {

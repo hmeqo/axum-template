@@ -51,7 +51,7 @@ pub struct SessionConfig {
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
-            cookie_name: "session_token".to_string(),
+            cookie_name: "session_id".to_string(),
             ttl_hours: 24,
         }
     }

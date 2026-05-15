@@ -4,7 +4,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use backend::{
+use axum_template::{
     app::{router::create_router, state::AppState},
     config::AppConfig,
 };

@@ -17,15 +17,15 @@ migration-generate() {
 }
 
 init() {
-    cargo run --bin backend -- init
+    cargo run --bin axum-template -- init
 }
 
 create-superuser() {
-    cargo run --bin backend -- create-superuser
+    cargo run --bin axum-template -- create-superuser
 }
 
 dev() {
-    exec cargo watch -x "run --bin backend"
+    exec cargo watch -x "run --bin axum-template"
 }
 
 "$@"
