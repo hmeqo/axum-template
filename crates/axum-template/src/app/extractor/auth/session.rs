@@ -10,7 +10,9 @@ use crate::{
 
 pub fn set_session_cookie(jar: CookieJar, state: &AppState, session_id: &str) -> CookieJar {
     let name = state.cfg().auth.session.cookie_name.clone();
-    jar.add(Cookie::new(name, session_id.to_owned()))
+    let mut cookie = Cookie::new(name, session_id.to_owned());
+    cookie.set_path("/");
+    jar.add(cookie)
 }
 
 pub fn remove_session_cookie(jar: CookieJar, state: &AppState) -> CookieJar {

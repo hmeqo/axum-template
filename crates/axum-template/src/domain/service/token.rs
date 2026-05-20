@@ -47,6 +47,10 @@ impl fmt::Debug for TokenService {
 }
 
 impl TokenService {
+    fn db(&self) -> Db {
+        self.db.clone()
+    }
+
     pub fn new(db: Db, jwt_secret: String, expires_in_seconds: u64) -> Self {
         Self {
             db,
@@ -75,9 +79,9 @@ impl TokenService {
     }
 
     pub async fn generate_refresh_token(&self, user_id: Pk) -> Result<String> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let token = Uuid::new_v4().to_string();
-        let expires_at = jiff::Timestamp::now() + jiff::Span::new().days(30);
+        let expires_at = jiff::Timestamp::now() + jiff::Span::new().hours(30 * 24);
         toasty::create!(RefreshToken {
             user_id,
             token: token.clone(),
@@ -89,7 +93,7 @@ impl TokenService {
     }
 
     pub async fn delete_all_refresh_tokens(&self, user_id: Pk) -> Result<()> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let tokens = RefreshToken::all()
             .filter(RefreshToken::fields().user_id().eq(user_id))
             .exec(&mut db)
@@ -104,7 +108,7 @@ impl TokenService {
     }
 
     pub async fn rotate_refresh_token(&self, refresh_token_str: &str) -> Result<RotatedTokens> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
 
         let stored = RefreshToken::filter_by_token(refresh_token_str)
             .get(&mut db)

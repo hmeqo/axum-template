@@ -16,6 +16,10 @@ impl SessionService {
         Self { db, ttl_hours }
     }
 
+    fn db(&self) -> toasty::Db {
+        self.db.clone()
+    }
+
     fn expires_at(&self) -> jiff::Timestamp {
         jiff::Timestamp::now() + jiff::Span::new().hours(self.ttl_hours as i64)
     }
@@ -27,7 +31,7 @@ impl SessionService {
     }
 
     pub async fn create(&self, user_id: Pk) -> Result<String> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let session_id = Uuid::new_v4().to_string();
         let expires_at = self.expires_at();
         toasty::create!(Session {
@@ -41,7 +45,7 @@ impl SessionService {
     }
 
     pub async fn find(&self, session_id: &str) -> Result<Option<Session>> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         Ok(Session::filter_by_session_id(session_id)
             .get(&mut db)
             .await
@@ -49,7 +53,7 @@ impl SessionService {
     }
 
     pub async fn extend(&self, session_id: &str) -> Result<()> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let mut session = Session::filter_by_session_id(session_id)
             .get(&mut db)
             .await?;
@@ -62,7 +66,7 @@ impl SessionService {
     }
 
     pub async fn delete(&self, session_id: &str) -> Result<()> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         Session::filter_by_session_id(session_id)
             .delete()
             .exec(&mut db)
@@ -71,7 +75,7 @@ impl SessionService {
     }
 
     pub async fn delete_by_user_id(&self, user_id: Pk) -> Result<()> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let sessions = Session::all()
             .filter(Session::fields().user_id().eq(user_id))
             .exec(&mut db)

@@ -17,8 +17,12 @@ impl UserService {
         Self { db }
     }
 
+    fn db(&self) -> Db {
+        self.db.clone()
+    }
+
     pub async fn create(&self, username: String, password: String) -> Result<User> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         if Self::exists_by_username_inner(&mut db, &username).await? {
             bail!(ErrorKind::AlreadyExists, "Username already exists");
         }
@@ -33,17 +37,17 @@ impl UserService {
     }
 
     pub async fn find_by_id(&self, id: Pk) -> Result<Option<User>> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         Ok(User::get_by_id(&mut db, &id).await.ok())
     }
 
     pub async fn get_by_id(&self, id: Pk) -> Result<User> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         Ok(User::get_by_id(&mut db, &id).await?)
     }
 
     pub async fn exists_by_username(&self, username: &str) -> Result<bool> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         Self::exists_by_username_inner(&mut db, username).await
     }
 
@@ -52,7 +56,7 @@ impl UserService {
     }
 
     pub async fn list(&self, page: u64, per_page: u64) -> Result<Vec<User>> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let offset = page.saturating_sub(1) * per_page;
         Ok(User::all()
             .order_by(User::fields().id().asc())
@@ -63,13 +67,12 @@ impl UserService {
     }
 
     pub async fn count(&self) -> Result<u64> {
-        let mut db = self.db.clone();
-        let users = User::all().exec(&mut db).await?;
-        Ok(users.len() as u64)
+        let mut db = self.db();
+        Ok(User::all().count().exec(&mut db).await?)
     }
 
     pub async fn update_username(&self, id: Pk, new_username: String) -> Result<User> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let mut user = User::get_by_id(&mut db, &id).await?;
 
         if new_username != user.username
@@ -88,7 +91,7 @@ impl UserService {
         old_password: &str,
         new_password: &str,
     ) -> Result<()> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let mut user = User::get_by_id(&mut db, &id).await?;
 
         if !password::verify(old_password, &user.password)? {
@@ -101,7 +104,7 @@ impl UserService {
     }
 
     pub async fn reset_password(&self, id: Pk, new_password: &str) -> Result<()> {
-        let mut db = self.db.clone();
+        let mut db = self.db();
         let mut user = User::get_by_id(&mut db, &id).await?;
         let hashed = password::hash(new_password)?;
         user.update().password(hashed).exec(&mut db).await?;
@@ -109,10 +112,8 @@ impl UserService {
     }
 
     pub async fn delete(&self, id: Pk) -> Result<()> {
-        let mut db = self.db.clone();
-        if User::get_by_id(&mut db, &id).await.is_ok() {
-            User::filter_by_id(id).delete().exec(&mut db).await?;
-        }
+        let mut db = self.db();
+        User::filter_by_id(id).delete().exec(&mut db).await?;
         Ok(())
     }
 }

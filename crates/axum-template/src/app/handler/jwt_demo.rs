@@ -6,7 +6,7 @@ use crate::{
         AppState,
         dto::{request::*, response::*},
         error::ErrorResp,
-        helper::{AppJson, auth::JwtCtx},
+        extractor::{AppJson, JwtCtx},
     },
     error::{AppError, ErrorKind},
     ext::{EndpointRouter, EndpointRouterT, OpenApiRouterExt},
@@ -20,24 +20,26 @@ pub async fn login(
     State(state): State<AppState>,
     AppJson(payload): AppJson<LoginReq>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = state
+    let auth_user = state
         .srv()
         .auth
         .authenticate(&payload.username, &payload.password)
         .await?
         .ok_or(ErrorKind::InvalidCredentials)?;
 
-    let access_token = state.srv().token.encode_access_token(&user)?;
-    let refresh_token = state.srv().token.generate_refresh_token(user.id).await?;
-
-    let permissions = state.srv().role.get_user_permissions(user.id).await?;
+    let access_token = state.srv().token.encode_access_token(&auth_user.user)?;
+    let refresh_token = state
+        .srv()
+        .token
+        .generate_refresh_token(auth_user.user.id)
+        .await?;
 
     let response = LoginResp {
         access_token,
         refresh_token,
         state: AuthStateResp {
-            user: UserResp::from(user),
-            permissions,
+            user: UserResp::from(auth_user.user),
+            permissions: auth_user.permissions,
         },
     };
 
@@ -86,12 +88,11 @@ pub async fn logout(
     (status = 401, body = ErrorResp),
 ))]
 pub async fn me(State(state): State<AppState>, ctx: JwtCtx) -> Result<impl IntoResponse, AppError> {
-    let user = ctx.user(state.srv()).await?;
-    let permissions = state.srv().role.get_user_permissions(user.id).await?;
+    let auth_user = state.srv().auth.get_auth_user(ctx.user_id).await?;
 
     Ok(Json(AuthStateResp {
-        user: UserResp::from(user),
-        permissions,
+        user: UserResp::from(auth_user.user),
+        permissions: auth_user.permissions,
     }))
 }
 

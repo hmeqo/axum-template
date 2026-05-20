@@ -68,7 +68,7 @@ impl Default for JwtConfig {
     fn default() -> Self {
         Self {
             secret: "change-me-in-production".to_string(),
-            expires_in_seconds: 3600,
+            expires_in_seconds: 900,
         }
     }
 }

@@ -7,7 +7,7 @@ use crate::{
         AppState,
         dto::{request::*, response::*},
         error::ErrorResp,
-        helper::{AppJson, SessionCtx, set_session_cookie},
+        extractor::{AppJson, SessionCtx, set_session_cookie},
     },
     error::{AppError, ErrorKind},
     ext::{EndpointRouter, EndpointRouterT, OpenApiRouterExt},
@@ -22,24 +22,23 @@ pub async fn login(
     jar: CookieJar,
     AppJson(payload): AppJson<LoginReq>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = state
+    let auth_user = state
         .srv()
         .auth
         .authenticate(&payload.username, &payload.password)
         .await?
         .ok_or(ErrorKind::InvalidCredentials)?;
 
-    let session_id = state.srv().session.create(user.id).await?;
+    let session_id = state.srv().session.create(auth_user.user.id).await?;
     let jar = set_session_cookie(jar, &state, &session_id);
 
-    let permissions = state.srv().role.get_user_permissions(user.id).await?;
-
-    let response = AuthStateResp {
-        user: UserResp::from(user),
-        permissions,
-    };
-
-    Ok((jar, Json(response)))
+    Ok((
+        jar,
+        Json(AuthStateResp {
+            user: UserResp::from(auth_user.user),
+            permissions: auth_user.permissions,
+        }),
+    ))
 }
 
 #[utoipa::path(post, path="/logout", responses(
@@ -63,15 +62,12 @@ pub async fn me(
     State(state): State<AppState>,
     ctx: SessionCtx,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = ctx.user(state.srv()).await?;
-    let permissions = state.srv().role.get_user_permissions(user.id).await?;
+    let auth_user = state.srv().auth.get_auth_user(ctx.user_id).await?;
 
-    let response = AuthStateResp {
-        user: UserResp::from(user),
-        permissions,
-    };
-
-    Ok(Json(response))
+    Ok(Json(AuthStateResp {
+        user: UserResp::from(auth_user.user),
+        permissions: auth_user.permissions,
+    }))
 }
 
 pub fn router() -> EndpointRouter<AppState> {

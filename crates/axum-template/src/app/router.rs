@@ -14,7 +14,7 @@ use utoipa_axum::router::OpenApiRouter;
 use utoipa_scalar::{Scalar, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::{controller, middleware::cors};
+use super::{handler, middleware::cors};
 use crate::{app::AppState, config::RawAppConfig, error::Result, ext::EndpointRouterT};
 
 #[derive(RustEmbed)]
@@ -83,10 +83,10 @@ async fn index_handler() -> impl IntoResponse {
 /// Create the application router with all routes and middleware
 pub async fn create_router(state: AppState) -> Result<Router> {
     let router = OpenApiRouter::new()
-        .merge(controller::chore::router())
-        .mount(controller::auth::router())
-        .mount(controller::user::router())
-        .mount(controller::jwt_demo::router());
+        .merge(handler::chore::router())
+        .mount(handler::auth::router())
+        .mount(handler::user::router())
+        .mount(handler::jwt_demo::router());
 
     let (router, api) = OpenApiRouter::new().nest("/api", router).split_for_parts();
 

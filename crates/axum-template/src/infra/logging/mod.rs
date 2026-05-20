@@ -3,11 +3,12 @@ use std::fs;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::config::LogConfig;
+use crate::config::{LogConfig, Paths};
 
 pub fn init_tracing(cfg: &LogConfig) {
-    fs::create_dir_all("logs").ok();
-    let file_appender = RollingFileAppender::new(Rotation::DAILY, "logs", "access.log");
+    let log_dir = Paths::log_dir();
+    fs::create_dir_all(&log_dir).ok();
+    let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "access.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     // keep worker alive for program lifetime
     Box::leak(Box::new(guard));

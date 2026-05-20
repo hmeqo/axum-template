@@ -6,10 +6,7 @@ use crate::{
         AppState,
         dto::{request::*, response::*},
         error::ErrorResp,
-        helper::{
-            auth::JwtCtx,
-            extractor::{AppJson, AppPath, AppQuery},
-        },
+        extractor::{AppJson, AppPath, AppQuery, SessionCtx},
     },
     bail,
     domain::{db::Pk, model::Perm},
@@ -25,9 +22,16 @@ use crate::{
     (status = 400, body = ErrorResp),
 ))]
 pub async fn list(
+    ctx: SessionCtx,
     State(state): State<AppState>,
     AppQuery(pagination): AppQuery<PaginationReq>,
 ) -> Result<impl IntoResponse, AppError> {
+    state
+        .srv()
+        .auth
+        .require_permission(ctx.user_id, Perm::UserRead)
+        .await?;
+
     let page = pagination.page;
     let per_page = pagination.per_page;
 
@@ -51,14 +55,15 @@ pub async fn list(
     (status = 400, body = ErrorResp),
 ))]
 pub async fn create(
-    ctx: JwtCtx,
+    ctx: SessionCtx,
     State(state): State<AppState>,
     AppJson(payload): AppJson<CreateUserReq>,
 ) -> Result<impl IntoResponse, AppError> {
-    let perms = state.srv().role.get_user_permissions(ctx.user_id).await?;
-    if !perms.iter().any(|p| p.matches(Perm::UserWrite.code())) {
-        bail!(ErrorKind::PermissionDenied, "Insufficient permissions");
-    }
+    state
+        .srv()
+        .auth
+        .require_permission(ctx.user_id, Perm::UserWrite)
+        .await?;
 
     let user = state
         .srv()
@@ -76,9 +81,16 @@ pub async fn create(
     (status = 400, body = ErrorResp),
 ))]
 pub async fn get(
+    ctx: SessionCtx,
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
 ) -> Result<impl IntoResponse, AppError> {
+    state
+        .srv()
+        .auth
+        .require_permission(ctx.user_id, Perm::UserRead)
+        .await?;
+
     let user = state.srv().user.get_by_id(id).await?;
     let response = UserResp::from(user);
     Ok(Json(response))
@@ -91,10 +103,17 @@ pub async fn get(
     (status = 400, body = ErrorResp),
 ))]
 pub async fn update_username(
+    ctx: SessionCtx,
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
     Json(payload): Json<UpdateUsernameReq>,
 ) -> Result<impl IntoResponse, AppError> {
+    state
+        .srv()
+        .auth
+        .require_permission(ctx.user_id, Perm::UserWrite)
+        .await?;
+
     let user = state
         .srv()
         .user
@@ -111,10 +130,18 @@ pub async fn update_username(
     (status = 400, body = ErrorResp),
 ))]
 pub async fn change_password(
+    ctx: SessionCtx,
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
     Json(payload): Json<ChangePasswordReq>,
 ) -> Result<impl IntoResponse, AppError> {
+    if ctx.user_id != id {
+        bail!(
+            ErrorKind::PermissionDenied,
+            "Cannot change another user's password"
+        );
+    }
+
     state
         .srv()
         .user
@@ -133,9 +160,16 @@ pub async fn change_password(
     (status = 400, body = ErrorResp),
 ))]
 pub async fn delete(
+    ctx: SessionCtx,
     State(state): State<AppState>,
     AppPath(PkPath { id }): AppPath<PkPath>,
 ) -> Result<impl IntoResponse, AppError> {
+    state
+        .srv()
+        .auth
+        .require_permission(ctx.user_id, Perm::UserDelete)
+        .await?;
+
     state.srv().user.delete(id).await?;
     let response = MessageResp {
         message: "User deleted successfully".to_string(),
