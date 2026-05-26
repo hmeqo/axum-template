@@ -7,6 +7,7 @@ pub struct RawAppConfig {
     pub log: LogConfig,
     pub database: DatabaseConfig,
     pub auth: AuthConfig,
+    pub storage: StorageConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -97,6 +98,23 @@ impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
             url: "postgres://postgres:@localhost:5432/db".to_string(),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct StorageConfig {
+    pub max_file_size: u64,
+    pub media_url_prefix: String,
+    pub media_dir: String,
+}
+
+impl Default for StorageConfig {
+    fn default() -> Self {
+        Self {
+            max_file_size: 10 * 1024 * 1024,
+            media_url_prefix: "/media".to_string(),
+            media_dir: "media".to_string(),
         }
     }
 }
