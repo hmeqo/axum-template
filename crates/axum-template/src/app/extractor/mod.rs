@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod multipart;
 
 pub use auth::*;
 use axum::{
@@ -6,6 +7,7 @@ use axum::{
     extract::{FromRequest, FromRequestParts, Path, Query, Request},
     http::request::Parts,
 };
+pub use multipart::{FormData, FromMultipart, UploadedFile};
 use serde::de::DeserializeOwned;
 use validator::Validate;
 

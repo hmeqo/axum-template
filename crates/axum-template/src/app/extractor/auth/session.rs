@@ -1,17 +1,22 @@
 use axum::{extract::FromRequestParts, http::request::Parts};
-use axum_extra::extract::cookie::{Cookie, CookieJar};
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use cookie::time::Duration;
 
 use crate::{
     app::AppState,
     bail,
     domain::{Services, db::Pk, model::User},
-    error::{AppError, ErrorKind},
+    error::{AppError, ErrorKind, OptionAppExt, ResultExt},
 };
 
 pub fn set_session_cookie(jar: CookieJar, state: &AppState, session_id: &str) -> CookieJar {
     let name = state.cfg().auth.session.cookie_name.clone();
+    let ttl_secs = state.cfg().auth.session.ttl_hours * 3600;
     let mut cookie = Cookie::new(name, session_id.to_owned());
     cookie.set_path("/");
+    cookie.set_http_only(true);
+    cookie.set_same_site(SameSite::Lax);
+    cookie.set_max_age(Some(Duration::seconds(ttl_secs as i64)));
     jar.add(cookie)
 }
 
@@ -43,12 +48,12 @@ impl FromRequestParts<AppState> for SessionCtx {
     ) -> Result<Self, Self::Rejection> {
         let jar = CookieJar::from_request_parts(parts, state)
             .await
-            .map_err(|_| ErrorKind::Unauthorized)?;
+            .err_kind(ErrorKind::Unauthorized)?;
 
         let config = state.cfg();
         let session_id = jar
             .get(&config.auth.session.cookie_name)
-            .ok_or(ErrorKind::Unauthorized)?
+            .ok_or_err_msg(ErrorKind::Unauthorized, "Session cookie not found")?
             .value()
             .to_owned();
 
@@ -71,5 +76,16 @@ impl FromRequestParts<AppState> for SessionCtx {
         Ok(SessionCtx {
             user_id: session.user_id,
         })
+    }
+}
+
+impl FromRequestParts<AppState> for Option<SessionCtx> {
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(SessionCtx::from_request_parts(parts, state).await.ok())
     }
 }

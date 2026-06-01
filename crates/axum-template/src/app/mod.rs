@@ -3,6 +3,7 @@ pub mod error;
 pub mod extractor;
 pub mod handler;
 pub mod middleware;
+pub mod response;
 pub mod router;
 pub mod serve;
 pub mod state;
