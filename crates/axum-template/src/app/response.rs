@@ -4,8 +4,6 @@ use axum::{
     response::Response,
 };
 
-use crate::domain::service::StoredFile;
-
 // ── Cache-Control helpers ──
 
 #[derive(Clone, Copy, strum::Display)]
@@ -32,17 +30,19 @@ pub enum Disposition {
 
 pub fn bytes(
     data: &[u8],
-    stored: &StoredFile,
+    mime_type: &str,
+    original_name: &str,
     cache: CacheControl,
     disposition: Disposition,
 ) -> Response {
     Response::builder()
-        .header(header::CONTENT_TYPE, &stored.file.mime_type)
+        .header(header::CONTENT_TYPE, mime_type)
         .header(
             header::CONTENT_DISPOSITION,
             format!(
                 "{}; filename=\"{}\"",
-                disposition, stored.file.original_name
+                disposition,
+                original_name.replace('"', "\\\"")
             ),
         )
         .header(header::CACHE_CONTROL, cache.to_string())

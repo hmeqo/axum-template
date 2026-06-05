@@ -10,6 +10,7 @@ async-trait = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
 axum-valid = { workspace = true }
+cookie = { workspace = true }
 jsonwebtoken = { workspace = true }
 rust-embed = { workspace = true }
 mime_guess = { workspace = true }

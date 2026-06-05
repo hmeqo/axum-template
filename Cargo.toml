@@ -25,9 +25,10 @@ validator = { version = "0.20", features = ["derive"] }
 jiff = { version = "0.2", features = ["serde"] }
 
 # Web & API
-axum = { version = "0.8", features = ["ws", "macros"] }
+axum = { version = "0.8", features = ["ws", "macros", "multipart"] }
 axum-extra = { version = "0.12", features = ["cookie"] }
 axum-valid = { version = "0.24", features = ["validator", "into_json"] }
+cookie = "0.18"
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace", "fs"] }
 jsonwebtoken = "9"
@@ -47,7 +48,11 @@ clap = { version = "4", features = ["derive"] }
 inquire = "0.9"
 tracing = "0.1"
 tracing-appender = "0.2"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "ansi", "json"] }
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "ansi",
+    "json",
+] }
 
 # Documentation
 utoipa = { version = "5", features = ["axum_extras"] }
