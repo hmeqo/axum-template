@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package template.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// The template's RPC surface: the same use cases the REST document publishes.
+service TemplateService {
+  // Identity and permissions of the caller.
+  rpc Me(google.protobuf.Empty) returns (AuthState);
+
+  // Users, paginated, optionally filtered by username words.
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+}
+
+// The caller and the permissions granted to them.
+message AuthState {
+  User user = 1;
+
+  // Wire codes of the permissions, as published by `Perm`.
+  repeated string permissions = 2;
+}
+
+message User {
+  int64 id = 1;
+  string username = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message ListUsersRequest {
+  // One-based page number; a page starting past the 10,000-row result window is
+  // rejected.
+  uint64 page = 1;
+
+  // 1 to 100; values outside that range are rejected.
+  uint64 per_page = 2;
+
+  // Case-insensitive username words; empty means no filter.
+  string username = 3;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  uint64 total = 2;
+  uint64 page = 3;
+  uint64 per_page = 4;
+}
+
+// A client-actionable failure, shaped like the REST `ErrorResp` body and
+// attached to the Connect error as its detail.
+message ErrorDetail {
+  // The `ErrorCode` wire code.
+  string code = 1;
+
+  // Field name to its messages, present only for validation failures.
+  map<string, FieldErrors> errors = 2;
+}
+
+message FieldErrors {
+  repeated string messages = 1;
+}

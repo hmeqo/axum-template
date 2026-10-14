@@ -1,10 +1,15 @@
-use axum::extract::{FromRequest, Request, multipart::Multipart};
-use derive_more::{Deref, DerefMut};
-use utoipa::ToSchema;
+use axum::{
+    extract::{
+        FromRequest, Request,
+        multipart::{Multipart, MultipartError},
+    },
+    http::StatusCode,
+};
 
-use crate::error::{AppError, ErrorKind};
-
-// ── Internal multipart field reader ──
+use crate::{
+    error::{AppError, ErrorCode},
+    infra::storage::strip_control_chars,
+};
 
 pub struct MultipartReader {
     fields: Vec<MultipartField>,
@@ -26,7 +31,7 @@ impl MultipartReader {
         let mut fields = Vec::new();
         while let Some(field) = multipart.next_field().await? {
             let name = field.name().unwrap_or("").to_string();
-            let file_name = field.file_name().map(|s| s.to_string());
+            let file_name = field.file_name().map(strip_control_chars);
             let content_type = field.content_type().map(|s| s.to_string());
 
             if file_name.is_some() {
@@ -59,37 +64,24 @@ impl MultipartReader {
             .and_then(|f| f.text.as_deref())
     }
 
-    pub fn file(&self, name: &str) -> Option<&MultipartField> {
-        self.fields
+    pub fn take_file(&mut self, name: &str) -> Option<MultipartField> {
+        let index = self
+            .fields
             .iter()
-            .find(|f| f.name == name && f.data.is_some())
+            .position(|f| f.name == name && f.data.is_some())?;
+        Some(self.fields.remove(index))
     }
 }
 
-// ── Uploaded file ──
-
-#[derive(Debug, ToSchema)]
+#[derive(Debug)]
 pub struct UploadedFile {
     pub name: String,
     pub mime_type: String,
     pub data: Vec<u8>,
 }
 
-// ── FormData extractor ──
-
-/// Extractor that parses multipart/form-data into a type implementing `FromMultipart`.
-///
-/// # Example
-///
-/// ```ignore
-/// async fn upload(FormData(form): FormData<MyUploadForm>) -> Result<...> {
-///     // use form.title, form.file, etc.
-/// }
-/// ```
-#[derive(Deref, DerefMut)]
 pub struct FormData<T>(pub T);
 
-/// Trait for types that can be parsed from multipart form data via `FormData<T>`.
 #[async_trait::async_trait]
 pub trait FromMultipart: Sized {
     async fn from_multipart(reader: &mut MultipartReader) -> Result<Self, AppError>;
@@ -105,11 +97,20 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let mut multipart = Multipart::from_request(req, state)
             .await
-            .map_err(|e| ErrorKind::ValidationFailed.msg(format!("Invalid multipart: {}", e)))?;
-        let mut reader = MultipartReader::read(&mut multipart).await.map_err(|e| {
-            ErrorKind::ValidationFailed.msg(format!("Failed to read multipart: {}", e))
-        })?;
+            .map_err(|e| AppError::malformed_request(format!("Invalid multipart: {e}")))?;
+        let mut reader = MultipartReader::read(&mut multipart)
+            .await
+            .map_err(|e| multipart_error("Failed to read multipart", e))?;
         let value = T::from_multipart(&mut reader).await?;
         Ok(FormData(value))
+    }
+}
+
+/// 超体积上限（413）与 `MediaStore::write` 的超限给同一个码；其余按请求格式错处理。
+fn multipart_error(what: &str, e: MultipartError) -> AppError {
+    if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
+        AppError::business(ErrorCode::FileTooLarge)
+    } else {
+        AppError::malformed_request(format!("{what}: {e}"))
     }
 }

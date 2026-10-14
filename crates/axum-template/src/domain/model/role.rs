@@ -1,13 +1,8 @@
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator, IntoStaticStr};
 use toasty::Model;
 
-use super::{Perm, UserRole};
-
-pub const DEFAULT_ROLE_PERMISSIONS: &[(DefaultRole, &[Perm])] = &[
-    (DefaultRole::Superuser, &[Perm::All]),
-    (DefaultRole::Admin, &[Perm::UserAll, Perm::RoleAll]),
-    (DefaultRole::User, &[Perm::UserRead]),
-];
+use super::UserRole;
+use crate::domain::vo::{Perm, RoleId};
 
 #[derive(Debug, Clone, Copy, EnumString, EnumIter, IntoStaticStr, Display)]
 #[strum(serialize_all = "snake_case")]
@@ -24,9 +19,9 @@ impl DefaultRole {
 
     pub fn description(&self) -> &'static str {
         match self {
-            Self::Superuser => "超级用户",
-            Self::Admin => "管理员",
-            Self::User => "普通用户",
+            Self::Superuser => "Superuser",
+            Self::Admin => "Administrator",
+            Self::User => "Regular user",
         }
     }
 
@@ -34,12 +29,12 @@ impl DefaultRole {
         Self::iter().collect()
     }
 
-    pub fn default_permissions(&self) -> &[Perm] {
-        DEFAULT_ROLE_PERMISSIONS
-            .iter()
-            .find(|(r, _)| r.name() == self.name())
-            .map(|(_, perms)| *perms)
-            .unwrap_or(&[])
+    pub fn default_permissions(&self) -> &'static [Perm] {
+        match self {
+            Self::Superuser => &[Perm::All],
+            Self::Admin => &[Perm::UserAll, Perm::RoleAll],
+            Self::User => &[Perm::UserRead],
+        }
     }
 }
 
@@ -47,14 +42,15 @@ impl DefaultRole {
 pub struct Role {
     #[key]
     #[auto]
-    pub id: i64,
+    pub id: RoleId,
 
     #[unique]
     pub name: String,
 
     pub description: Option<String>,
 
-    pub permissions: String,
+    #[column(type = jsonb)]
+    pub permissions: toasty::Json<Vec<Perm>>,
 
     #[auto]
     pub created_at: jiff::Timestamp,
@@ -63,7 +59,7 @@ pub struct Role {
     pub updated_at: jiff::Timestamp,
 
     #[has_many]
-    pub user_roles: toasty::HasMany<UserRole>,
+    pub user_roles: toasty::Deferred<Vec<UserRole>>,
 }
 
 impl Role {
@@ -72,17 +68,13 @@ impl Role {
     }
 
     pub fn perm_codes(&self) -> Vec<String> {
-        serde_json::from_str(&self.permissions).unwrap_or_default()
-    }
-
-    pub fn set_perms(&mut self, perms: &[Perm]) {
-        self.permissions = serde_json::to_string(perms).unwrap_or_default();
-    }
-
-    pub fn parse_perms(&self) -> Vec<Perm> {
-        self.perm_codes()
+        self.permissions
             .iter()
-            .filter_map(|c| Perm::from_code(c))
+            .map(|p| p.code().to_string())
             .collect()
+    }
+
+    pub fn permissions(&self) -> Vec<Perm> {
+        self.permissions.to_vec()
     }
 }

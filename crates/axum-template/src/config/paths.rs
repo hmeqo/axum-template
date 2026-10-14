@@ -1,43 +1,78 @@
-use std::path::PathBuf;
+//! 运行期路径的唯一出处。
 
-use crate::config::{PROJECT_DIR, env};
+use std::{
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
-pub struct Paths;
+use crate::config::{PROJECT_DIR, env, schema::StorageConfig};
 
-impl Paths {
-    fn local_dir() -> PathBuf {
-        PathBuf::from(format!(".{PROJECT_DIR}"))
-    }
+struct Dirs {
+    config: PathBuf,
+    data: PathBuf,
+}
 
-    fn is_local_mode() -> bool {
-        Self::local_dir().exists() || env::local_mode()
-    }
+static DIRS: OnceLock<Dirs> = OnceLock::new();
 
-    pub fn config_dir() -> PathBuf {
-        let local = Self::local_dir();
-        if Self::is_local_mode() {
-            return local;
+impl Dirs {
+    fn resolve() -> Self {
+        let local = PathBuf::from(format!(".{PROJECT_DIR}"));
+        if local.exists() || env::local_mode() {
+            return Self {
+                config: local.clone(),
+                data: local,
+            };
         }
-        dirs::config_dir()
-            .map(|p| p.join(PROJECT_DIR))
-            .unwrap_or(local)
-    }
-
-    pub fn data_dir() -> PathBuf {
-        let local = Self::local_dir();
-        if Self::is_local_mode() {
-            return local;
+        Self {
+            config: dirs::config_dir().map_or_else(|| local.clone(), |p| p.join(PROJECT_DIR)),
+            data: dirs::data_dir().map_or_else(|| local.clone(), |p| p.join(PROJECT_DIR)),
         }
-        dirs::data_dir()
-            .map(|p| p.join(PROJECT_DIR))
-            .unwrap_or(local)
     }
+}
 
-    pub fn config_file() -> PathBuf {
-        Self::config_dir().join("config.toml")
+fn dirs() -> &'static Dirs {
+    DIRS.get_or_init(Dirs::resolve)
+}
+
+/// 取代 `.<project>` / XDG 的自动解析。
+///
+/// # Panics
+/// 在任何路径被解析之后再调用会 panic。
+pub fn set_dirs(config: PathBuf, data: PathBuf) {
+    if DIRS.set(Dirs { config, data }).is_err() {
+        panic!("set_dirs must be called before any path is resolved");
     }
+}
 
-    pub fn log_dir() -> PathBuf {
-        Self::data_dir().join("logs")
+pub fn config_dir() -> &'static Path {
+    &dirs().config
+}
+
+pub fn data_dir() -> &'static Path {
+    &dirs().data
+}
+
+pub fn config_file() -> PathBuf {
+    config_dir().join("config.toml")
+}
+
+pub fn config_file_for(profile: &str) -> PathBuf {
+    config_dir().join(format!("config.{profile}.toml"))
+}
+
+pub fn env_file() -> PathBuf {
+    config_dir().join(".env")
+}
+
+pub fn log_dir() -> PathBuf {
+    data_dir().join("logs")
+}
+
+pub fn media_dir(storage: &StorageConfig) -> PathBuf {
+    let configured = PathBuf::from(&storage.media_dir);
+    if configured.is_absolute() {
+        configured
+    } else {
+        data_dir().join(configured)
     }
 }

@@ -5,43 +5,54 @@ resolver = "3"
 [workspace.dependencies]
 anyhow = "1"
 async-trait = "0.1"
-bon = "3"
-config = { version = "0.15", features = ["toml"] }
+config = { version = "0.15", features = ["toml", "convert-case"] }
 dirs = "6"
 dotenvy = "0.15"
-rand = "0.9"
+ipnet = "2"
 serde = { version = "1", features = ["derive"] }
-serde_with = "3.17"
 serde_json = "1"
 strum = { version = "0.28", features = ["derive"] }
 derive_more = { version = "2", features = ["full"] }
 
 thiserror = "2"
 tokio = { version = "1", features = ["full"] }
-tokio-stream = "0.1"
-uuid = { version = "1", features = ["v4", "serde"] }
-validator = { version = "0.20", features = ["derive"] }
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+sha2 = "0.10"
+tokio-util = { version = "0.7", features = ["io"] }
+validator = { version = "0.21", features = ["derive"] }
 
 jiff = { version = "0.2", features = ["serde"] }
 
 # Web & API
 axum = { version = "0.8", features = ["ws", "macros", "multipart"] }
 axum-extra = { version = "0.12", features = ["cookie"] }
-axum-valid = { version = "0.24", features = ["validator", "into_json"] }
 cookie = "0.18"
 tower = "0.5"
-tower-http = { version = "0.6", features = ["cors", "trace", "fs"] }
-jsonwebtoken = "9"
+tower-http = { version = "0.6", features = ["cors", "trace", "fs", "timeout"] }
+jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 rust-embed = { version = "8.5", features = ["axum"] }
 mime_guess = "2.0"
+percent-encoding = "2"
+image = { version = "0.25", default-features = false, features = [
+    "jpeg",
+    "png",
+    "webp",
+    "avif",
+] }
+
+# RPC (ConnectRPC)
+connectrpc = { version = "0.9", features = ["axum"] }
+connectrpc-build = "0.9"
+connectrpc-reflection = { version = "0.9", default-features = false }
+buffa = "0.9"
+buffa-types = { version = "0.9", features = ["jiff", "json"] }
 
 # Database
-toasty = { version = "0.5", features = ["jiff", "postgresql"] }
-toasty-cli = "0.5"
+toasty = { version = "0.10", features = ["jiff", "postgresql", "serde"] }
+toasty-cli = "0.10"
 
 # Auth & Crypto
-argon2 = "0.5"
-password-hash = { version = "0.5", features = ["rand_core", "getrandom"] }
+argon2 = "0.6"
 
 # Logging & CLI
 clap = { version = "4", features = ["derive"] }
@@ -54,8 +65,25 @@ tracing-subscriber = { version = "0.3", features = [
     "json",
 ] }
 
+# WebTransport sample (optional)
+wtransport = "0.7"
+
+# Tests
+tokio-tungstenite = "0.30"
+base64 = "0.22"
+futures-util = "0.3"
+tokio-postgres = "0.7"
+
 # Documentation
-utoipa = { version = "5", features = ["axum_extras"] }
+utoipa = { version = "5", features = ["axum_extras", "uuid"] }
 utoipa-axum = "0.2"
 utoipa-scalar = { version = "0.3", features = ["axum"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"

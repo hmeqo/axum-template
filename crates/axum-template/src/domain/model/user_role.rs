@@ -1,24 +1,26 @@
 use toasty::Model;
 
 use super::{Role, User};
+use crate::domain::vo::{RoleId, UserId, UserRoleId};
 
 #[derive(Debug, Clone, Model)]
+#[unique(user_id, role_id)]
 pub struct UserRole {
     #[key]
     #[auto]
-    pub id: i64,
+    pub id: UserRoleId,
 
     #[index]
-    pub user_id: i64,
+    pub user_id: UserId,
 
     #[belongs_to(key = user_id, references = id)]
-    pub user: toasty::BelongsTo<User>,
+    pub user: toasty::Deferred<User>,
 
     #[index]
-    pub role_id: i64,
+    pub role_id: RoleId,
 
     #[belongs_to(key = role_id, references = id)]
-    pub role: toasty::BelongsTo<Role>,
+    pub role: toasty::Deferred<Role>,
 
     #[auto]
     pub created_at: jiff::Timestamp,

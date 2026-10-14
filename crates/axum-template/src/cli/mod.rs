@@ -1,4 +1,4 @@
-//! CLI module for administrative commands
+//! 管理命令的命令行适配层。
 
 pub mod command;
 pub mod command_impl;

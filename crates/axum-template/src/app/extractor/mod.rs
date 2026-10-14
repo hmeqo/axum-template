@@ -1,19 +1,19 @@
-pub mod auth;
+pub mod client_info;
 pub mod multipart;
+pub mod permission;
 
-pub use auth::*;
 use axum::{
     Json,
     extract::{FromRequest, FromRequestParts, Path, Query, Request},
     http::request::Parts,
 };
 pub use multipart::{FormData, FromMultipart, UploadedFile};
+pub use permission::*;
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
 use crate::error::AppError;
 
-/// A validated Path extractor that returns AppError on failure
 #[derive(Debug)]
 pub struct AppPath<T>(pub T);
 
@@ -31,7 +31,6 @@ where
     }
 }
 
-/// A validated Query extractor that returns AppError on failure
 #[derive(Debug)]
 pub struct AppQuery<T>(pub T);
 
@@ -49,7 +48,6 @@ where
     }
 }
 
-/// A validated Json extractor that returns AppError on failure
 #[derive(Debug)]
 pub struct AppJson<T>(pub T);
 

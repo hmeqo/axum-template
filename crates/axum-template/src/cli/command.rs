@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = env!("CARGO_CRATE_NAME"))]
+#[command(name = env!("CARGO_PKG_NAME"))]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
@@ -17,11 +17,11 @@ pub enum Commands {
 
     /// Create a superuser with all permissions
     CreateSuperuser {
-        /// Username for the superuser
+        /// Prompted interactively if omitted
         #[arg(short, long)]
         username: Option<String>,
 
-        /// Password for the superuser
+        /// Prompted interactively (hidden) if omitted
         #[arg(short, long)]
         password: Option<String>,
     },
@@ -41,11 +41,9 @@ pub enum RoleCommands {
 
     /// Create a new role
     Create {
-        /// Role name
         #[arg(short, long)]
         name: String,
 
-        /// Role description
         #[arg(short, long)]
         description: Option<String>,
 
@@ -56,7 +54,6 @@ pub enum RoleCommands {
 
     /// Delete a role
     Delete {
-        /// Role name
         #[arg(short, long)]
         name: String,
     },

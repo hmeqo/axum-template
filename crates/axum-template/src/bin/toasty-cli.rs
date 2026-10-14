@@ -1,20 +1,16 @@
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
+
 use anyhow::Result;
-use axum_template::{config::AppConfig, domain::model};
+use axum_template::config::{AppConfig, env};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _ = dotenvy::dotenv();
+    env::load_env_file()?;
     let app_config = AppConfig::load()?;
 
     let cli_config = toasty_cli::Config::load()?;
     let db = toasty::Db::builder()
-        .models(toasty::models!(
-            model::User,
-            model::Role,
-            model::UserRole,
-            model::RefreshToken,
-            model::Session
-        ))
+        .models(axum_template::app_models!())
         .connect(&app_config.database.url)
         .await?;
 

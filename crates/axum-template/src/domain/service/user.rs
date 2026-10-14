@@ -1,10 +1,13 @@
-use toasty::Db;
+use toasty::{Db, stmt::Expr};
 
 use crate::{
     bail,
-    domain::{db::Pk, model::User},
-    error::{ErrorKind, Result},
-    util::password,
+    domain::{
+        db::{ToastyResultExt, user as user_db},
+        model::User,
+        vo::{LIKE_ESCAPE, Page, Pagination, Password, PasswordHash, UserFilter, UserId, Username},
+    },
+    error::{AppError, ErrorCode, Result},
 };
 
 #[derive(Debug, Clone)]
@@ -17,103 +20,144 @@ impl UserService {
         Self { db }
     }
 
-    fn db(&self) -> Db {
-        self.db.clone()
-    }
-
-    pub async fn create(&self, username: String, password: String) -> Result<User> {
-        let mut db = self.db();
-        if Self::exists_by_username_inner(&mut db, &username).await? {
-            bail!(ErrorKind::AlreadyExists, "Username already exists");
+    pub async fn create(&self, username: Username, password: Password) -> Result<User> {
+        let mut db = self.db.clone();
+        if Self::exists_by_username_inner(&mut db, username.as_str()).await? {
+            bail!(AppError::business(ErrorCode::UserUsernameTaken));
         }
 
-        let hashed = password::hash(&password)?;
-        Ok(toasty::create!(User {
+        let hashed = PasswordHash::hash(&password)?;
+        let username = username.into_string();
+        let user = toasty::create!(User {
             username,
             password: hashed
         })
         .exec(&mut db)
-        .await?)
+        .await?;
+        Ok(user)
     }
 
-    pub async fn find_by_id(&self, id: Pk) -> Result<Option<User>> {
-        let mut db = self.db();
-        Ok(User::get_by_id(&mut db, &id).await.ok())
+    pub async fn find_by_id(&self, id: UserId) -> Result<Option<User>> {
+        let mut db = self.db.clone();
+        User::get_by_id(&mut db, &id).await.optional()
     }
 
-    pub async fn get_by_id(&self, id: Pk) -> Result<User> {
-        let mut db = self.db();
-        Ok(User::get_by_id(&mut db, &id).await?)
+    pub async fn get_by_id(&self, id: UserId) -> Result<User> {
+        let mut db = self.db.clone();
+        Self::get_by_id_inner(&mut db, id).await
+    }
+
+    async fn get_by_id_inner(db: &mut Db, id: UserId) -> Result<User> {
+        User::get_by_id(db, &id)
+            .await
+            .optional()?
+            .ok_or_else(|| AppError::not_found("User not found"))
     }
 
     pub async fn exists_by_username(&self, username: &str) -> Result<bool> {
-        let mut db = self.db();
+        let mut db = self.db.clone();
         Self::exists_by_username_inner(&mut db, username).await
     }
 
     async fn exists_by_username_inner(db: &mut Db, username: &str) -> Result<bool> {
-        Ok(User::filter_by_username(username).get(db).await.is_ok())
+        Ok(User::filter_by_username(username)
+            .get(db)
+            .await
+            .optional()?
+            .is_some())
     }
 
-    pub async fn list(&self, page: u64, per_page: u64) -> Result<Vec<User>> {
-        let mut db = self.db();
-        let offset = page.saturating_sub(1) * per_page;
-        Ok(User::all()
-            .order_by(User::fields().id().asc())
-            .limit(per_page as usize)
-            .offset(offset as usize)
-            .exec(&mut db)
-            .await?)
+    pub async fn find_by_username(&self, username: &str) -> Result<Option<User>> {
+        let mut db = self.db.clone();
+        User::filter_by_username(username)
+            .get(&mut db)
+            .await
+            .optional()
     }
 
-    pub async fn count(&self) -> Result<u64> {
-        let mut db = self.db();
-        Ok(User::all().count().exec(&mut db).await?)
+    pub async fn list(&self, pagination: Pagination, filter: &UserFilter) -> Result<Vec<User>> {
+        let mut db = self.db.clone();
+        user_db::list_users(&mut db, pagination, Self::filter_expr(filter)).await
     }
 
-    pub async fn update_username(&self, id: Pk, new_username: String) -> Result<User> {
-        let mut db = self.db();
-        let mut user = User::get_by_id(&mut db, &id).await?;
+    pub async fn count(&self, filter: &UserFilter) -> Result<u64> {
+        let mut db = self.db.clone();
+        user_db::count_users(&mut db, Self::filter_expr(filter)).await
+    }
 
+    /// `total` 用与这一页相同的过滤表达式。
+    pub async fn page(&self, pagination: Pagination, filter: &UserFilter) -> Result<Page<User>> {
+        let items = self.list(pagination, filter).await?;
+        let total = self.count(filter).await?;
+        Ok(Page::new(items, total, pagination))
+    }
+
+    // 子串搜索用不上 `users.username` 的唯一索引(`ILIKE '%word%'` 左锚定不了);
+    // 真要大表走索引需要 pg_trgm + GIN,或改成精确匹配。
+    // `ILIKE` 的大小写折叠按库的 collation(`C.UTF-8` 下只折叠 ASCII)。
+    fn filter_expr(filter: &UserFilter) -> Option<Expr<bool>> {
+        let patterns = filter.username_patterns();
+        (!patterns.is_empty()).then(|| {
+            Expr::and_all(patterns.into_iter().map(|pattern| {
+                User::fields()
+                    .username()
+                    .ilike_with_escape(pattern, LIKE_ESCAPE)
+            }))
+        })
+    }
+
+    pub async fn update_username(&self, id: UserId, new_username: Username) -> Result<User> {
+        let mut db = self.db.clone();
+        let mut user = Self::get_by_id_inner(&mut db, id).await?;
+
+        let new_username = new_username.into_string();
         if new_username != user.username
             && Self::exists_by_username_inner(&mut db, &new_username).await?
         {
-            bail!(ErrorKind::AlreadyExists, "Username already exists");
+            bail!(AppError::business(ErrorCode::UserUsernameTaken));
         }
 
-        user.update().username(new_username).exec(&mut db).await?;
-        Ok(User::get_by_id(&mut db, &id).await?)
+        toasty::update!(user {
+            username: new_username
+        })
+        .exec(&mut db)
+        .await?;
+        Ok(user)
     }
 
-    pub async fn change_password(
+    /// 只改列；失效登录态由 `AuthService::change_password` 负责。
+    pub(crate) async fn change_password(
         &self,
-        id: Pk,
+        id: UserId,
         old_password: &str,
-        new_password: &str,
+        new_password: Password,
     ) -> Result<()> {
-        let mut db = self.db();
-        let mut user = User::get_by_id(&mut db, &id).await?;
+        let mut db = self.db.clone();
+        let user = Self::get_by_id_inner(&mut db, id).await?;
 
-        if !password::verify(old_password, &user.password)? {
-            bail!(ErrorKind::InvalidCredentials, "Invalid old password");
+        if !user.password.verify(old_password)? {
+            bail!(AppError::business(ErrorCode::UserInvalidOldPassword));
         }
 
-        let hashed = password::hash(new_password)?;
-        user.update().password(hashed).exec(&mut db).await?;
+        Self::set_password(&mut db, user, PasswordHash::hash(&new_password)?).await
+    }
+
+    /// 只改列；失效登录态由 `AuthService::reset_password` 负责。
+    pub(crate) async fn reset_password(&self, id: UserId, new_password: Password) -> Result<()> {
+        let mut db = self.db.clone();
+        let user = Self::get_by_id_inner(&mut db, id).await?;
+        Self::set_password(&mut db, user, PasswordHash::hash(&new_password)?).await
+    }
+
+    async fn set_password(db: &mut Db, mut user: User, hash: PasswordHash) -> Result<()> {
+        toasty::update!(user { password: hash }).exec(db).await?;
         Ok(())
     }
 
-    pub async fn reset_password(&self, id: Pk, new_password: &str) -> Result<()> {
-        let mut db = self.db();
-        let mut user = User::get_by_id(&mut db, &id).await?;
-        let hashed = password::hash(new_password)?;
-        user.update().password(hashed).exec(&mut db).await?;
-        Ok(())
-    }
-
-    pub async fn delete(&self, id: Pk) -> Result<()> {
-        let mut db = self.db();
-        User::filter_by_id(id).delete().exec(&mut db).await?;
+    /// 只删行；吊销长连接由 `AuthService::delete_user` 负责。
+    pub async fn delete(&self, id: UserId) -> Result<()> {
+        let mut db = self.db.clone();
+        User::delete_by_id(&mut db, id).await?;
         Ok(())
     }
 }

@@ -3,10 +3,11 @@ use toasty::Db;
 use crate::{
     bail,
     domain::{
-        db::Pk,
-        model::{Perm, Role, UserRole},
+        db::{ToastyResultExt, role as role_db},
+        model::Role,
+        vo::{Pagination, Perm, RoleId, UserId},
     },
-    error::{ErrorKind, Result},
+    error::{AppError, ErrorCode, Result},
 };
 
 #[derive(Debug, Clone)]
@@ -19,142 +20,124 @@ impl RoleService {
         Self { db }
     }
 
-    fn db(&self) -> Db {
-        self.db.clone()
-    }
-
     pub async fn create(
         &self,
         name: String,
         description: Option<String>,
         perms: &[Perm],
     ) -> Result<Role> {
-        let mut db = self.db();
+        let mut db = self.db.clone();
         if Self::exists_by_name_inner(&mut db, &name).await? {
-            bail!(ErrorKind::AlreadyExists, "Role already exists");
+            bail!(AppError::business(ErrorCode::RoleNameTaken));
         }
 
-        let permissions = serde_json::to_string(perms).unwrap_or_default();
-        Ok(toasty::create!(Role {
+        let role = toasty::create!(Role {
             name,
             description,
-            permissions
+            permissions: perms.to_vec()
         })
         .exec(&mut db)
-        .await?)
+        .await?;
+        Ok(role)
     }
 
-    pub async fn find_by_id(&self, id: Pk) -> Result<Option<Role>> {
-        let mut db = self.db();
-        Ok(Role::get_by_id(&mut db, &id).await.ok())
+    pub async fn find_by_id(&self, id: RoleId) -> Result<Option<Role>> {
+        let mut db = self.db.clone();
+        Role::get_by_id(&mut db, &id).await.optional()
     }
 
-    pub async fn get_by_id(&self, id: Pk) -> Result<Role> {
-        let mut db = self.db();
-        Ok(Role::get_by_id(&mut db, &id).await?)
+    pub async fn get_by_id(&self, id: RoleId) -> Result<Role> {
+        let mut db = self.db.clone();
+        Self::get_by_id_inner(&mut db, id).await
+    }
+
+    async fn get_by_id_inner(db: &mut Db, id: RoleId) -> Result<Role> {
+        Role::get_by_id(db, &id)
+            .await
+            .optional()?
+            .ok_or_else(|| AppError::not_found("Role not found"))
     }
 
     pub async fn find_by_name(&self, name: &str) -> Result<Option<Role>> {
-        let mut db = self.db();
-        Ok(Role::filter_by_name(name).get(&mut db).await.ok())
+        let mut db = self.db.clone();
+        Role::filter_by_name(name).get(&mut db).await.optional()
     }
 
     async fn exists_by_name_inner(db: &mut Db, name: &str) -> Result<bool> {
-        Ok(Role::filter_by_name(name).get(db).await.is_ok())
+        Ok(Role::filter_by_name(name)
+            .get(db)
+            .await
+            .optional()?
+            .is_some())
     }
 
-    pub async fn list(&self, page: u64, per_page: u64) -> Result<Vec<Role>> {
-        let mut db = self.db();
-        let offset = page.saturating_sub(1) * per_page;
-        Ok(Role::all()
-            .order_by(Role::fields().id().asc())
-            .limit(per_page as usize)
-            .offset(offset as usize)
-            .exec(&mut db)
-            .await?)
+    pub async fn list(&self, pagination: Pagination) -> Result<Vec<Role>> {
+        let mut db = self.db.clone();
+        role_db::list_roles(&mut db, pagination).await
     }
 
     pub async fn list_all(&self) -> Result<Vec<Role>> {
-        let mut db = self.db();
-        Ok(Role::all().exec(&mut db).await?)
+        let mut db = self.db.clone();
+        role_db::list_all_roles(&mut db).await
     }
 
     pub async fn count(&self) -> Result<u64> {
-        let mut db = self.db();
-        Ok(Role::all().count().exec(&mut db).await?)
+        let mut db = self.db.clone();
+        role_db::count_roles(&mut db).await
     }
 
-    pub async fn update_name(&self, id: Pk, new_name: String) -> Result<Role> {
-        let mut db = self.db();
-        let mut role = Role::get_by_id(&mut db, &id).await?;
+    pub async fn update_name(&self, id: RoleId, new_name: String) -> Result<Role> {
+        let mut db = self.db.clone();
+        let mut role = Self::get_by_id_inner(&mut db, id).await?;
 
         if new_name != role.name && Self::exists_by_name_inner(&mut db, &new_name).await? {
-            bail!(ErrorKind::AlreadyExists, "Role name already exists");
+            bail!(AppError::business(ErrorCode::RoleNameTaken));
         }
 
-        role.update().name(new_name).exec(&mut db).await?;
-        Ok(Role::get_by_id(&mut db, &id).await?)
+        toasty::update!(role { name: new_name })
+            .exec(&mut db)
+            .await?;
+        Ok(role)
     }
 
-    pub async fn update_description(&self, id: Pk, description: Option<String>) -> Result<Role> {
-        let mut db = self.db();
-        let mut role = Role::get_by_id(&mut db, &id).await?;
-        role.update().description(description).exec(&mut db).await?;
-        Ok(Role::get_by_id(&mut db, &id).await?)
+    pub async fn update_description(
+        &self,
+        id: RoleId,
+        description: Option<String>,
+    ) -> Result<Role> {
+        let mut db = self.db.clone();
+        let mut role = Self::get_by_id_inner(&mut db, id).await?;
+        toasty::update!(role { description }).exec(&mut db).await?;
+        Ok(role)
     }
 
-    pub async fn delete(&self, id: Pk) -> Result<()> {
-        let mut db = self.db();
-        Role::filter_by_id(id).delete().exec(&mut db).await?;
+    pub async fn delete(&self, id: RoleId) -> Result<()> {
+        let mut db = self.db.clone();
+        Role::delete_by_id(&mut db, id).await?;
         Ok(())
     }
 
-    pub async fn assign_to_user(&self, user_id: Pk, role_id: Pk) -> Result<()> {
-        let mut db = self.db();
-        let existing = UserRole::all()
-            .filter(UserRole::fields().user_id().eq(user_id))
-            .filter(UserRole::fields().role_id().eq(role_id))
-            .exec(&mut db)
-            .await?;
-
-        if !existing.is_empty() {
-            bail!(ErrorKind::AlreadyExists, "Role already assigned to user");
+    pub async fn assign_to_user(&self, user_id: UserId, role_id: RoleId) -> Result<()> {
+        let mut db = self.db.clone();
+        if !role_db::assign_role_to_user(&mut db, user_id, role_id).await? {
+            bail!(AppError::business(ErrorCode::RoleAlreadyAssigned));
         }
-
-        toasty::create!(UserRole { user_id, role_id })
-            .exec(&mut db)
-            .await?;
         Ok(())
     }
 
-    pub async fn remove_from_user(&self, user_id: Pk, role_id: Pk) -> Result<()> {
-        let mut db = self.db();
-        UserRole::all()
-            .filter(UserRole::fields().user_id().eq(user_id))
-            .filter(UserRole::fields().role_id().eq(role_id))
-            .delete()
-            .exec(&mut db)
-            .await?;
-        Ok(())
+    pub async fn remove_from_user(&self, user_id: UserId, role_id: RoleId) -> Result<()> {
+        let mut db = self.db.clone();
+        role_db::remove_role_from_user(&mut db, user_id, role_id).await
     }
 
-    pub async fn get_user_roles(&self, user_id: Pk) -> Result<Vec<Role>> {
-        let mut db = self.db();
-        let urs = UserRole::all()
-            .filter(UserRole::fields().user_id().eq(user_id))
-            .include(UserRole::fields().role())
-            .exec(&mut db)
-            .await?;
-
-        let mut roles: Vec<Role> = urs.iter().map(|ur| ur.role.get().clone()).collect();
-        roles.sort_by_key(|r| r.id);
-        roles.dedup_by_key(|r| r.id);
-        Ok(roles)
+    pub async fn get_user_roles(&self, user_id: UserId) -> Result<Vec<Role>> {
+        let mut db = self.db.clone();
+        role_db::find_user_roles(&mut db, user_id).await
     }
 
-    pub async fn get_user_permissions(&self, user_id: Pk) -> Result<Vec<Perm>> {
+    pub async fn get_user_permissions(&self, user_id: UserId) -> Result<Vec<Perm>> {
         let roles = self.get_user_roles(user_id).await?;
-        let mut perms: Vec<Perm> = roles.iter().flat_map(|r| r.parse_perms()).collect();
+        let mut perms: Vec<Perm> = roles.iter().flat_map(|r| r.permissions()).collect();
         perms.sort();
         perms.dedup();
         Ok(perms)

@@ -1,17 +1,22 @@
 use std::fs;
 
-use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_appender::{
+    non_blocking::WorkerGuard,
+    rolling::{RollingFileAppender, Rotation},
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::config::{LogConfig, Paths};
+use crate::{
+    config::{LogConfig, paths},
+    error::Result,
+};
 
-pub fn init_tracing(cfg: &LogConfig) {
-    let log_dir = Paths::log_dir();
-    fs::create_dir_all(&log_dir).ok();
+/// 返回的 guard 必须持有到进程结束（drop 时冲刷非阻塞缓冲）。
+pub fn init_tracing(cfg: &LogConfig) -> Result<WorkerGuard> {
+    let log_dir = paths::log_dir();
+    fs::create_dir_all(&log_dir)?;
     let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "access.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-    // keep worker alive for program lifetime
-    Box::leak(Box::new(guard));
 
     tracing_subscriber::registry()
         .with(
@@ -35,4 +40,6 @@ pub fn init_tracing(cfg: &LogConfig) {
                 .with_writer(non_blocking),
         )
         .init();
+
+    Ok(guard)
 }

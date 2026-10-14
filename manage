@@ -21,7 +21,7 @@ init() {
 }
 
 create-superuser() {
-    cargo run --bin axum-template -- create-superuser
+    cargo run --bin axum-template -- create-superuser "$@"
 }
 
 dev() {

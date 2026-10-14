@@ -93,12 +93,19 @@ primary_key = true
 
 [[schema.tables.indices]]
 id = { table = 1, index = 1 }
+name = "index_user_roles_by_user_id_and_role_id"
+on = 1
+columns = [{ column = { table = 1, index = 1 }, op = "Eq", scope = "Partition" }, { column = { table = 1, index = 2 }, op = "Eq", scope = "Local" }]
+unique = true
+
+[[schema.tables.indices]]
+id = { table = 1, index = 2 }
 name = "index_user_roles_by_user_id"
 on = 1
 columns = [{ column = { table = 1, index = 1 }, op = "Eq", scope = "Partition" }]
 
 [[schema.tables.indices]]
-id = { table = 1, index = 2 }
+id = { table = 1, index = 3 }
 name = "index_user_roles_by_role_id"
 on = 1
 columns = [{ column = { table = 1, index = 2 }, op = "Eq", scope = "Partition" }]
@@ -132,7 +139,7 @@ nullable = true
 id = { table = 2, index = 3 }
 name = "permissions"
 ty = "String"
-storage_ty = "Text"
+storage_ty = "Jsonb"
 
 [[schema.tables.columns]]
 id = { table = 2, index = 4 }
@@ -163,7 +170,7 @@ unique = true
 
 [[schema.tables]]
 id = 3
-name = "refresh_tokens"
+name = "sessions"
 primary_key = { columns = [{ table = 3, index = 0 }], index = { table = 3, index = 0 } }
 
 [[schema.tables.columns]]
@@ -197,9 +204,23 @@ name = "created_at"
 ty = "Timestamp"
 storage_ty = { Timestamp = 6 }
 
+[[schema.tables.columns]]
+id = { table = 3, index = 5 }
+name = "ip"
+ty = "String"
+storage_ty = "Text"
+nullable = true
+
+[[schema.tables.columns]]
+id = { table = 3, index = 6 }
+name = "user_agent"
+ty = "String"
+storage_ty = "Text"
+nullable = true
+
 [[schema.tables.indices]]
 id = { table = 3, index = 0 }
-name = "index_refresh_tokens_by_id"
+name = "index_sessions_by_id"
 on = 3
 columns = [{ column = { table = 3, index = 0 }, op = "Eq", scope = "Partition" }]
 unique = true
@@ -207,14 +228,20 @@ primary_key = true
 
 [[schema.tables.indices]]
 id = { table = 3, index = 1 }
-name = "index_refresh_tokens_by_token"
+name = "index_sessions_by_user_id"
+on = 3
+columns = [{ column = { table = 3, index = 1 }, op = "Eq", scope = "Partition" }]
+
+[[schema.tables.indices]]
+id = { table = 3, index = 2 }
+name = "index_sessions_by_token"
 on = 3
 columns = [{ column = { table = 3, index = 2 }, op = "Eq", scope = "Partition" }]
 unique = true
 
 [[schema.tables]]
 id = 4
-name = "sessions"
+name = "refresh_tokens"
 primary_key = { columns = [{ table = 4, index = 0 }], index = { table = 4, index = 0 } }
 
 [[schema.tables.columns]]
@@ -232,7 +259,7 @@ storage_ty = { Integer = 8 }
 
 [[schema.tables.columns]]
 id = { table = 4, index = 2 }
-name = "session_id"
+name = "token"
 ty = "String"
 storage_ty = "Text"
 
@@ -248,9 +275,23 @@ name = "created_at"
 ty = "Timestamp"
 storage_ty = { Timestamp = 6 }
 
+[[schema.tables.columns]]
+id = { table = 4, index = 5 }
+name = "ip"
+ty = "String"
+storage_ty = "Text"
+nullable = true
+
+[[schema.tables.columns]]
+id = { table = 4, index = 6 }
+name = "user_agent"
+ty = "String"
+storage_ty = "Text"
+nullable = true
+
 [[schema.tables.indices]]
 id = { table = 4, index = 0 }
-name = "index_sessions_by_id"
+name = "index_refresh_tokens_by_id"
 on = 4
 columns = [{ column = { table = 4, index = 0 }, op = "Eq", scope = "Partition" }]
 unique = true
@@ -258,7 +299,107 @@ primary_key = true
 
 [[schema.tables.indices]]
 id = { table = 4, index = 1 }
-name = "index_sessions_by_session_id"
+name = "index_refresh_tokens_by_user_id"
+on = 4
+columns = [{ column = { table = 4, index = 1 }, op = "Eq", scope = "Partition" }]
+
+[[schema.tables.indices]]
+id = { table = 4, index = 2 }
+name = "index_refresh_tokens_by_token"
 on = 4
 columns = [{ column = { table = 4, index = 2 }, op = "Eq", scope = "Partition" }]
 unique = true
+
+[[schema.tables]]
+id = 5
+name = "files"
+primary_key = { columns = [{ table = 5, index = 0 }], index = { table = 5, index = 0 } }
+
+[[schema.tables.columns]]
+id = { table = 5, index = 0 }
+name = "id"
+ty = "Uuid"
+storage_ty = "Uuid"
+
+[[schema.tables.columns]]
+id = { table = 5, index = 1 }
+name = "user_id"
+ty = "I64"
+storage_ty = { Integer = 8 }
+
+[[schema.tables.columns]]
+id = { table = 5, index = 2 }
+name = "original_name"
+ty = "String"
+storage_ty = "Text"
+
+[[schema.tables.columns]]
+id = { table = 5, index = 3 }
+name = "mime_type"
+ty = "String"
+storage_ty = "Text"
+
+[[schema.tables.columns]]
+id = { table = 5, index = 4 }
+name = "file_size"
+ty = "I64"
+storage_ty = { Integer = 8 }
+
+[[schema.tables.columns]]
+id = { table = 5, index = 5 }
+name = "width"
+ty = "U32"
+storage_ty = { UnsignedInteger = 4 }
+nullable = true
+
+[[schema.tables.columns]]
+id = { table = 5, index = 6 }
+name = "height"
+ty = "U32"
+storage_ty = { UnsignedInteger = 4 }
+nullable = true
+
+[[schema.tables.columns]]
+id = { table = 5, index = 7 }
+name = "hash"
+ty = "String"
+storage_ty = "Text"
+
+[[schema.tables.columns]]
+id = { table = 5, index = 8 }
+name = "state"
+ty = "String"
+storage_ty = "Text"
+
+[[schema.tables.columns]]
+id = { table = 5, index = 9 }
+name = "attached_at"
+ty = "Timestamp"
+storage_ty = { Timestamp = 6 }
+nullable = true
+
+[[schema.tables.columns]]
+id = { table = 5, index = 10 }
+name = "created_at"
+ty = "Timestamp"
+storage_ty = { Timestamp = 6 }
+
+[[schema.tables.columns]]
+id = { table = 5, index = 11 }
+name = "updated_at"
+ty = "Timestamp"
+storage_ty = { Timestamp = 6 }
+
+[[schema.tables.indices]]
+id = { table = 5, index = 0 }
+name = "index_files_by_id"
+on = 5
+columns = [{ column = { table = 5, index = 0 }, op = "Eq", scope = "Partition" }]
+unique = true
+primary_key = true
+
+[[schema.tables.indices]]
+id = { table = 5, index = 1 }
+name = "index_files_by_user_id"
+on = 5
+columns = [{ column = { table = 5, index = 1 }, op = "Eq", scope = "Partition" }]
