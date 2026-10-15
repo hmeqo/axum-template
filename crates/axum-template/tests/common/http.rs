@@ -73,6 +73,7 @@ impl<'a> TestRequest<'a> {
         )
     }
 
+    /// 跑一条请求：`oneshot` 直达路由器（不经监听器），响应体读全。
     pub async fn send(self) -> Result<TestResponse> {
         let Self {
             server,
@@ -103,6 +104,7 @@ impl<'a> TestRequest<'a> {
     }
 }
 
+/// 一条响应：状态、头、体与扩展；断言失败时打印请求行、状态与响应体。
 pub struct TestResponse {
     request: String,
     pub status: StatusCode,
@@ -155,6 +157,7 @@ impl TestResponse {
             .collect()
     }
 
+    /// 错误体里的业务 `code`。
     pub fn code(&self) -> Option<String> {
         self.json()["code"].as_str().map(str::to_owned)
     }

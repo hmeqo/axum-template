@@ -1,10 +1,10 @@
 # Axum Template Architecture
 
-The executable rules and the reference tables live in `AGENTS.md`; this document is the long-form
-companion — why the code is shaped that way, in the code's own terms. Build, tooling and migrations are
-in `docs/development.md`, configuration and environment in `docs/configuration.md`, the test harness and
-the per-file contract table in `docs/testing.md`. A fact has one home in one of these files, and code is
-the source of truth: a line here that contradicts it is a bug.
+The executable rules live in `AGENTS.md`; this document is the long-form companion — why the code is
+shaped that way, in the code's own terms. Build, tooling and migrations are in `docs/development.md`,
+configuration and environment in `docs/configuration.md`, the test harness in `docs/testing.md`. A fact
+has one home in one of these files, and code is the source of truth: a line here that contradicts it is a
+bug.
 
 ## Layering
 
@@ -437,6 +437,13 @@ that status codes exist.
   `auth__login`); consumers strip at the first `__`. `tests/openapi_test.rs` fails when an operation
   is left untagged and therefore unprefixed. `describe_service` (same module) replaces `info` with the
   crate's name and version, so the document describes the service that owns it.
+- Which credentials an operation accepts is written once, as `security(…)` on its `#[utoipa::path]`,
+  and reaches clients because `register_security_schemes` registers the two schemes it can name at the
+  same assembly point (`SECURITY_SESSION_COOKIE`, whose cookie name comes from the config, and
+  `SECURITY_BEARER`). Two security requirements on one operation mean *either* credential, one means
+  that one, and none means public. The entry and the extractor are two readings of the same policy, so
+  `tests/openapi_test.rs` checks both ends: a non-public operation must declare a credential, and every
+  name must resolve to a component.
 - Text in the published documents comes from the source comments, so those comments are written for a
   client: a `///` on a `#[utoipa::path]` handler becomes the operation `summary`/`description`, and a
   `///` on a `ToSchema` / `IntoParams` field becomes that property's or parameter's description. An
@@ -449,12 +456,3 @@ that status codes exist.
   it implements `IntoParams` with `#[into_params(parameter_in = Query)]` (utoipa defaults a bare
   `params(Type)` to `Path`) and carries the bounds, which must be literals — utoipa rejects a const
   path in both `params(…)` and `#[param(…)]`.
-
-## Stack
-
-- **Web framework**: Axum + Tokio
-- **ORM**: Toasty (PostgreSQL)
-- **Authentication**: session cookie + JWT (`jsonwebtoken`)
-- **Documentation**: utoipa + Scalar / Swagger UI
-- **Validation**: validator
-- **Serialization**: serde

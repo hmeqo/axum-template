@@ -16,7 +16,8 @@ use crate::{
     error::AppError,
 };
 
-#[utoipa::path(get, path="/", params(PaginationReq), responses(
+/// The caller's own files, newest first.
+#[utoipa::path(get, path="/", security(("sessionCookie" = []), ("bearer" = [])), params(PaginationReq), responses(
     ErrorResponses,
     (status = 200, body = FileListResp),
 ))]
@@ -38,7 +39,8 @@ pub async fn list(
     Ok(Json(FileListResp::from(files)))
 }
 
-#[utoipa::path(post, path="/", request_body(content = UploadForm, content_type = "multipart/form-data"), responses(
+/// Stores the uploaded part as a draft; attach it before the draft sweep reclaims it.
+#[utoipa::path(post, path="/", security(("sessionCookie" = []), ("bearer" = [])), request_body(content = UploadForm, content_type = "multipart/form-data"), responses(
     ErrorResponses,
     (status = 200, body = FileResp),
 ))]
@@ -65,9 +67,10 @@ pub async fn upload(
     )))
 }
 
+/// Marks a draft as attached; repeating it is a no-op.
 #[utoipa::path(post, path="/{id}/attach", params(
     ("id" = FileId, Path, description = "Opaque file handle"),
-), responses(
+), security(("sessionCookie" = []), ("bearer" = [])), responses(
     ErrorResponses,
     (status = 200, body = FileResp),
 ))]

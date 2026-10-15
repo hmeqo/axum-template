@@ -6,11 +6,11 @@ truth; a line in any of these files that contradicts it is a bug in the file.
 
 | File | Carries |
 |---|---|
-| `AGENTS.md` (this file) | the rules, the directory/file indexes, the commands, the endpoint contract |
+|`AGENTS.md` (this file)|the rules, the directory/file indexes, the commands|
 | `docs/architecture.md` | why the code is shaped this way: layering, request path, auth flow, realtime/RPC, file storage, error classification, OpenAPI assembly |
 | `docs/development.md` | toolchain, build, dependencies, protobuf, migrations, CLI, local state |
-| `docs/configuration.md` | config precedence, environment variables, `validate()`, every key's default |
-| `docs/testing.md` | test harness, per-file contract table, how to run, what not to pin |
+| `docs/configuration.md` | config precedence, environment variables, `validate()`, path resolution, operator gotchas |
+| `docs/testing.md` | test harness, how to run, isolation, unit-test layout, what not to pin |
 
 ## Project Overview
 
@@ -79,37 +79,13 @@ error/     mod.rs (AppError, bail!) · code.rs (ErrorCode) · mapping.rs (foreig
 
 ### Endpoint surface
 
-| Route | Auth | Owner |
-|---|---|---|
-| `POST /api/auth/login` | public | `routes/auth.rs` |
-| `POST /api/auth/logout` | session, own session only | `routes/auth.rs` |
-| `GET /api/auth/me` | session or JWT | `routes/auth.rs` |
-| `PUT /api/auth/password` | session or JWT, own password only, no id in the path; a session caller gets a rotated cookie | `routes/auth.rs` |
-| `GET /api/auth/sessions` | session | `routes/auth.rs` |
-| `DELETE /api/auth/sessions/{id}` | session, own sessions only | `routes/auth.rs` |
-| `POST /api/auth/sessions/revoke-others` | session, every session of the caller except this one | `routes/auth.rs` |
-| `POST /api/auth/jwt/login`, `/refresh` | public | `routes/jwt.rs` |
-| `POST /api/auth/jwt/logout` | JWT | `routes/jwt.rs` |
-| `GET /api/users` | `Require<UserRead>`, `?username=` filters by case-insensitive words | `routes/user.rs` |
-| `POST /api/users` | `Require<UserWrite>` | `routes/user.rs` |
-| `GET /api/users/{id}` | `Require<UserRead>` | `routes/user.rs` |
-| `PUT /api/users/{id}/username` | `Require<UserWrite>` | `routes/user.rs` |
-| `POST /api/users/{id}/password/reset` | `Require<UserPasswordReset>`, no old password, revokes the target everywhere | `routes/user.rs` |
-| `DELETE /api/users/{id}` | `Require<UserDelete>` | `routes/user.rs` |
-| `POST /api/files` | `Require<UserWrite>`, multipart field `file`; creates a draft | `routes/files.rs` |
-| `GET /api/files` | `Require<UserWrite>`, caller's own files only, newest first, paginated | `routes/files.rs` |
-| `POST /api/files/{id}/attach` | `Require<UserWrite>`, owner only, idempotent | `routes/files.rs` |
-| `GET {storage.media-url-prefix}/{id}` | public, opaque uuid handle; raster inlined with its RFC 8187 filename, any other type an attachment | `routes/media.rs` |
-| `GET {storage.media-url-prefix}/{id}?size=N` | public derivative, longest side ≤ N (64/128/256/512/2048), aspect preserved, never cropped or upscaled; AVIF by `Accept` (JPEG fallback), `Vary: Accept`, `inline` | `routes/media.rs` |
-| `GET /ws` | session cookie at upgrade; client sends `subscribe`/`unsubscribe`/`ping` | `socket/realtime.rs` |
-| `POST /api/rpc/{package}.{Service}/{Method}` | bearer token or session cookie; generated from `proto/` | `app/rpc` |
-| `GET /api/error` | public, the `ErrorResp` shape with `200` so generated clients emit it | `routes/error.rs` |
-| `GET /health`, `/health/ready` | public, not part of the OpenAPI document | `routes/health.rs` |
-| `GET /api-docs/scalar`, `/api-docs/swagger-ui`, `/api-docs/openapi.json` | public | `app/router.rs` |
-| `POST /api-docs/rpc/grpc.reflection.v1.ServerReflection/ServerReflectionInfo` | public, bidi ⇒ HTTP/2 | `app/rpc` |
-
-The user-facing descriptions of these routes are in `README.md`; the design behind them in
-`docs/architecture.md`.
+The surface is the code, never a list here: a route module's `router()` is its mount and its auth
+backend, the `#[utoipa::path]` above a handler is the only place that handler's path, parameters, body
+and responses are written, and the extractors in its signature are what a caller must present
+(`Auth<B>` identity, `Require<P>` permission) — the `///` above the attribute is the text clients read.
+`app/router.rs::create_router` is the whole inventory, `GET /api-docs/openapi.json` its rendered form,
+and `tests/route_guard_test.rs` derives its own inventory from that document rather than from a table.
+`{storage.media-url-prefix}`, `/ws` and the doc UIs mount outside the `/api` nest.
 
 ## Key Directories
 
@@ -176,8 +152,9 @@ rather than expecting `./manage migrate` to fix it. Why, and the rest of the mec
   constructor already enforces (an exhaustive `match`, a private field behind a validating constructor)
   is not such a fact. Inner `//` comments explaining *why* are welcome.
 - **Route module shape**: a `//!` line stating what the module is for, then the handlers top-down, each
-  paired with the `#[utoipa::path]` that is the only place its path, params, body and responses are
-  written, then `pub const PATH`, then `pub fn router()` **last** — listing its routes in handler order,
+  paired with the `#[utoipa::path]` that is the only place its path, params, body, responses and
+  accepted credentials (`security(…)`) are written, then `pub const PATH`, then `pub fn router()`
+  **last** — listing its routes in handler order,
   ending `.with_tags([…])` and, unless public, `.route_layer(auth(ctx, <backend>))`. `router()` takes
   `&AppContext` only when the module needs state (`health`, `static_site`, `error` take none). Mounting
   lives only in `app/router.rs::create_router` — `nest(PATH, router(&ctx))` for a group,
@@ -296,4 +273,4 @@ rather than expecting `./manage migrate` to fix it. Why, and the rest of the mec
 - Add tests only for an uncertain edge or when asked: pin observable contract (status + `code`,
   headers, DB/WS state), never wiring, incidental defaults or message wording. Fix the source, not the
   symptom, and migrate every caller in the same commit — no shims, aliases or deprecated paths.
-- Harness API, per-file contract table and the openapi-specific rules: `docs/testing.md`.
+- Harness API, how to run the suite, and what it deliberately leaves unpinned: `docs/testing.md`.

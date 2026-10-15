@@ -6,7 +6,7 @@ pub const THUMB_SIZES: [ThumbSize; 5] = [
     ThumbSize(128),
     ThumbSize(256),
     ThumbSize(512),
-    // 「打开」用的查看档：1920 宽窗口里 1:1，原图超过它才需要它。
+    // 「打开」用的查看档：1920 宽窗口里 1:1。
     ThumbSize(2048),
 ];
 

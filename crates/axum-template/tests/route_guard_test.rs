@@ -1,4 +1,4 @@
-//! 路由守卫：文档里每条路由在无会话时都应是 401（除非在 `PUBLIC` 里）。
+//! 路由守卫：文档里每条路由在无会话时都应是 401（除非在 `PUBLIC_PATHS` 里）。
 
 use std::str::FromStr;
 
@@ -7,14 +7,7 @@ use axum::http::{Method, StatusCode};
 
 mod common;
 
-use common::TestServer;
-
-const PUBLIC: &[&str] = &[
-    "/api/error",
-    "/api/auth/login",
-    "/api/auth/jwt/login",
-    "/api/auth/jwt/refresh",
-];
+use common::{PUBLIC_PATHS, TestServer};
 
 /// 文档之外的入口：RPC 的方法路径挂在 `/api/rpc` 之下，同样要凭据。
 ///
@@ -58,14 +51,14 @@ async fn api_routes_require_auth_unless_whitelisted() -> Result<()> {
                 .send()
                 .await?;
 
-            if PUBLIC.contains(&path.as_str()) {
+            if PUBLIC_PATHS.contains(&path.as_str()) {
                 continue;
             }
 
             assert_eq!(
                 res.status,
                 StatusCode::UNAUTHORIZED,
-                "{method} {path} without a session should be 401; if public, add to PUBLIC: {}",
+                "{method} {path} without a session should be 401; if public, add to PUBLIC_PATHS: {}",
                 res.text()
             );
             guarded += 1;

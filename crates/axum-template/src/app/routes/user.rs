@@ -19,7 +19,7 @@ use crate::{
     error::AppError,
 };
 
-#[utoipa::path(get, path="/", params(PaginationReq, UserFilterReq), responses(
+#[utoipa::path(get, path="/", security(("sessionCookie" = []), ("bearer" = [])), params(PaginationReq, UserFilterReq), responses(
     ErrorResponses,
     (status = 200, body = UserListResp),
 ))]
@@ -42,7 +42,7 @@ pub async fn list(
     Ok(Json(UserListResp::from(users)))
 }
 
-#[utoipa::path(post, path="/", request_body = CreateUserReq, responses(
+#[utoipa::path(post, path="/", security(("sessionCookie" = []), ("bearer" = [])), request_body = CreateUserReq, responses(
     ErrorResponses,
     (status = 200, body = UserResp),
 ))]
@@ -63,7 +63,7 @@ pub async fn create(
     Ok(Json(response))
 }
 
-#[utoipa::path(get, path="/{id}", params(
+#[utoipa::path(get, path="/{id}", security(("sessionCookie" = []), ("bearer" = [])), params(
     ("id" = UserId, Path)
 ), responses(
     ErrorResponses,
@@ -79,7 +79,7 @@ pub async fn get(
     Ok(Json(response))
 }
 
-#[utoipa::path(put, path="/{id}/username", params(
+#[utoipa::path(put, path="/{id}/username", security(("sessionCookie" = []), ("bearer" = [])), params(
     ("id" = UserId, Path)
 ), request_body = UpdateUsernameReq, responses(
     ErrorResponses,
@@ -101,9 +101,11 @@ pub async fn update_username(
 }
 
 // 与 `/api/auth/password` 相对：这条针对别人，故不验旧密码。
+/// Sets another user's password without the old one, and revokes the target's sessions and refresh
+/// tokens.
 #[utoipa::path(post, path="/{id}/password/reset", params(
     ("id" = UserId, Path)
-), request_body = ResetPasswordReq, responses(
+), security(("sessionCookie" = []), ("bearer" = [])), request_body = ResetPasswordReq, responses(
     ErrorResponses,
     (status = 200, body = MessageResp),
 ))]
@@ -121,7 +123,8 @@ pub async fn reset_password(
     Ok(Json(MessageResp::new("Password reset successfully")))
 }
 
-#[utoipa::path(delete, path="/{id}", params(
+/// Deletes the user together with everything the relations cascade: sessions, refresh tokens, files.
+#[utoipa::path(delete, path="/{id}", security(("sessionCookie" = []), ("bearer" = [])), params(
     ("id" = UserId, Path)
 ), responses(
     ErrorResponses,

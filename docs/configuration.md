@@ -47,53 +47,24 @@ been resolved.
 
 ## What `validate()` refuses
 
-`AppConfig::load()` runs `validate()` (`config/mod.rs`), which fails startup on:
-
-- any positive-integer key that is `0` — one shared private helper `positive`, one message
-  (`"{key} must be > 0"`): `server.port`, `webtransport.port` (when enabled), `request-timeout-seconds`,
-  `shutdown-timeout-seconds`, `auth.session.ttl-hours`, `auth.jwt.expires-in-seconds`,
-  `realtime.channel-capacity`, `storage.max-file-size`, `storage.gc-interval-minutes`,
-  `storage.unattached-ttl-hours`, `storage.orphan-grace-minutes`;
-- `webtransport.enabled` on a build without the `webtransport` cargo feature;
-- `webtransport.cert` and `key` set one without the other;
-- an empty `database.url`;
-- a malformed `storage.media-url-prefix` (must start with `/`, must not contain `{` or `}` — it is
-  interpolated into `Router::route`);
-- each `cors.allowed-origins` entry not being `Origin`-shaped (scheme + host, lowercase, no userinfo,
-  path, query, fragment or trailing slash);
-- `auth.session.same-site = "none"` without `secure = true`.
-
-Trusted proxies are different: `server.trusted-proxies` entries are parsed when `AppConfig::new` builds
-the proxy table (`config/trusted_proxies.rs`), so a malformed entry fails there rather than in
-`validate()`. An empty list means `X-Forwarded-For` is never trusted.
+`AppConfig::load()` runs `validate()` (`config/mod.rs`) before anything is built, and a failure there
+aborts startup; the rules and the message each one carries are declared in that single function, so read
+it rather than a copy of it. What it does not own: `server.trusted-proxies` entries are parsed while
+`AppConfig::new` builds the proxy table (`config/trusted_proxies.rs`), so a malformed entry fails there
+rather than in `validate()`. An empty list means `X-Forwarded-For` is never trusted.
 
 ## Defaults
 
-| Key | Default |
-|---|---|
-| `server.host` / `server.port` | `0.0.0.0` / `8000` |
-| `server.request-timeout-seconds` / `server.shutdown-timeout-seconds` | `30` / `10` |
-| `server.trusted-proxies` | `[]` — never trust `X-Forwarded-For` |
-| `log.level` | `debug` (`RUST_LOG` wins; rotation and JSON file output are hardcoded) |
-| `database.url` | `postgres://postgres:@localhost:5432/db` |
-| `auth.session.cookie-name` | `session_id` |
-| `auth.session.ttl-hours` | `24` (the only session expiry; no absolute cap) |
-| `auth.session.secure` / `same-site` | `false` / `lax` |
-| `auth.jwt.secret` | `change-me-in-production` — placeholder, set a real secret in every deployment |
-| `auth.jwt.expires-in-seconds` | `900` (refresh tokens live 30 days, `RefreshToken::TTL_HOURS`) |
-| `storage.max-file-size` | `10485760` (10 MiB); the request body limit is this `+ 1 MiB` |
-| `storage.media-url-prefix` / `media-dir` | `/media` / `media` |
-| `storage.gc-interval-minutes` / `unattached-ttl-hours` / `orphan-grace-minutes` | `60` / `24` / `60` |
-| `realtime.channel-capacity` | `64` per topic (a lagging subscriber is told how many events it missed) |
-| `cors.allowed-origins` | `[]` — no cross-origin access |
-| `webtransport.enabled` / `port` | `false` / `4433` (no PEM paths ⇒ a self-signed certificate) |
+Not listed here on purpose: the defaults have exactly one declaration site, the `Default` impl of each
+section in `config/schema.rs`, and `axum-template config` prints the values that won after layering.
+Facts that are not keys at all live where they are consumed — a refresh token's 30-day life
+(`RefreshToken::TTL_HOURS`), the request-body limit derived from `storage.max-file-size`.
 
 ## Operator gotchas
 
-- **Every CLI subcommand boots the app**: it needs a reachable database and creates the media directory.
-  `axum-template config` prints the effective configuration as JSON, `auth.jwt.secret` included — route
-  its output accordingly.
-- `cargo run --bin axum-template` (no subcommand) is the server; it runs on `server.host:server.port`.
+- Printing the effective configuration (`axum-template config`) exposes `auth.jwt.secret` in clear
+  text — route that output accordingly. What it needs to boot, and what every other subcommand does, is
+  in `docs/development.md`.
 - With an empty CORS allowlist no credentials are sent; a non-empty one mirrors the request's methods
   and headers and sets `allow_credentials(true)` (a `*` origin cannot be combined with credentials), and
   the origins were already shape-validated at load time.

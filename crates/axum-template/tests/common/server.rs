@@ -50,6 +50,7 @@ impl Session {
 }
 
 pub struct TestServer {
+    /// 测试用来检查状态：服务 `ctx.srv()`、配置 `ctx.cfg()`、媒体 `ctx.media()`。
     pub ctx: AppContext,
     pub app: Router,
     pub addr: SocketAddr,
@@ -105,6 +106,7 @@ impl TestServer {
         })
     }
 
+    /// 建账号：`role` 为 `None` 就没有角色；用户名每进程唯一，密码是 [`Account::PASSWORD`]。
     pub async fn account(&self, name: &str, role: Option<&str>) -> Result<Account> {
         let username = unique_username(name);
         let user = self
@@ -134,11 +136,13 @@ impl TestServer {
         })
     }
 
+    /// 建账号并登录。
     pub async fn login(&self, name: &str, role: Option<&str>) -> Result<Session> {
         let account = self.account(name, role).await?;
         self.open_session(account).await
     }
 
+    /// 给已建好的账号开一条会话（`POST /api/auth/login`）。
     pub async fn open_session(&self, account: Account) -> Result<Session> {
         let res = self
             .post("/api/auth/login")

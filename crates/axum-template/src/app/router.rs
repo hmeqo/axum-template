@@ -13,7 +13,9 @@ use utoipa_swagger_ui::SwaggerUi;
 use super::{
     AppContext,
     extractor::client_info,
-    http::openapi::{describe_service, prefix_operation_ids, register_error_schemas},
+    http::openapi::{
+        describe_service, prefix_operation_ids, register_error_schemas, register_security_schemes,
+    },
     middleware::{cors, error_log, no_store, request_id},
     routes, rpc,
     socket::realtime,
@@ -37,6 +39,7 @@ pub async fn create_router(ctx: AppContext) -> Result<Router> {
     prefix_operation_ids(&mut api_doc);
     describe_service(&mut api_doc);
     register_error_schemas(&mut api_doc);
+    register_security_schemes(&mut api_doc, &ctx.cfg().auth.session.cookie_name);
 
     Ok(router
         .merge(routes::health::router())

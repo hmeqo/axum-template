@@ -39,6 +39,8 @@ pub async fn login(
     }))
 }
 
+/// Exchanges a refresh token for a new pair; the presented token is single-use, so a replay is a
+/// `auth.refresh_token_invalid`.
 #[utoipa::path(post, path="/refresh", request_body = RefreshReq, responses(
     ErrorResponses,
     (status = 200, body = RefreshResp),
@@ -60,7 +62,8 @@ pub async fn refresh(
     }))
 }
 
-#[utoipa::path(post, path="/logout", responses(
+/// Revokes every refresh token of the account.
+#[utoipa::path(post, path="/logout", security(("bearer" = [])), responses(
     ErrorResponses,
     (status = 200, body = MessageResp),
 ))]

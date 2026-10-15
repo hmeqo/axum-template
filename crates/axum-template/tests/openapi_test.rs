@@ -198,6 +198,74 @@ fn collect_refs(value: &Value, out: &mut Vec<String>) {
     }
 }
 
+/// 每个受保护的 operation 必须声明它接受的凭证，方案名必须在组件里有定义；公开的 operation 反过来
+/// 不能声明。清单与 `route_guard_test` 同源，两边不会各说一套。
+#[tokio::test]
+async fn operations_declare_the_credentials_they_accept() -> Result<()> {
+    let server = TestServer::start().await?;
+    let doc = server.openapi().await?;
+
+    let schemes: Vec<&String> = doc["components"]["securitySchemes"]
+        .as_object()
+        .expect("components.securitySchemes is an object")
+        .keys()
+        .collect();
+    assert!(
+        !schemes.is_empty(),
+        "the document defines no security scheme, so no operation can declare one"
+    );
+
+    let mut guarded = 0;
+    for (path, item) in doc["paths"].as_object().expect("paths is an object") {
+        for (method, operation) in item.as_object().expect("path item is an object") {
+            if !matches!(
+                method.as_str(),
+                "get" | "put" | "post" | "delete" | "options" | "head" | "patch" | "trace"
+            ) {
+                continue;
+            }
+
+            let declared = operation["security"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default();
+            if common::PUBLIC_PATHS.contains(&path.as_str()) {
+                assert!(
+                    declared.is_empty(),
+                    "{method} {path} is in PUBLIC_PATHS but declares {declared:?}"
+                );
+                continue;
+            }
+
+            assert!(
+                !declared.is_empty(),
+                "{method} {path} declares no credential: add `security(…)` to its \
+                 #[utoipa::path], or the path to common::PUBLIC_PATHS when it is public"
+            );
+            for requirement in &declared {
+                let names = requirement
+                    .as_object()
+                    .expect("a security requirement is an object");
+                assert!(
+                    !names.is_empty(),
+                    "{method} {path} declares an empty security requirement"
+                );
+                for name in names.keys() {
+                    assert!(
+                        schemes.contains(&name),
+                        "{method} {path} requires {name}, which no component defines"
+                    );
+                }
+            }
+            guarded += 1;
+        }
+    }
+
+    assert!(guarded > 0, "no guarded operation was inspected");
+
+    Ok(())
+}
+
 /// 发布文案一律英文（`///` 会原样变成文档里的 `summary`／`description`）。
 #[tokio::test]
 async fn published_documents_contain_no_cjk() -> Result<()> {

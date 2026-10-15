@@ -33,6 +33,7 @@ pub async fn connect_path(
     Ok(connect_async(request).await?.0)
 }
 
+/// 读到满足 `want` 的帧；最多扫 `MAX_FRAMES` 帧，超时 5 秒。
 pub async fn wait_for(ws: &mut Socket, want: impl Fn(&Value) -> bool) -> Result<Value> {
     let mut seen = Vec::new();
     for _ in 0..MAX_FRAMES {

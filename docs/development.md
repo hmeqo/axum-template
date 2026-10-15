@@ -24,14 +24,8 @@ mechanics; the rules an editor must follow live in `AGENTS.md`.
   `src/app/socket/webtransport.rs` and `tests/webtransport_test.rs`, and `validate()` refuses a config
   that enables it on a build without the feature.
 
-```bash
-cargo check --all-targets [--features webtransport]
-cargo fmt --all
-cargo clippy --all-targets --features webtransport
-cargo test [--features webtransport]
-cargo run --bin axum-template
-cargo doc --document-private-items
-```
+The checks are listed in `AGENTS.md` → *Development Commands*. `cargo doc --document-private-items`
+renders the docs the code carries itself.
 
 ## Protobuf surface
 
@@ -39,11 +33,10 @@ cargo doc --document-private-items
   `service TemplateService { Me, ListUsers }`). The well-known imports (`google/protobuf/empty.proto`,
   `timestamp.proto`) come from `protoc`'s bundled copies — nothing is vendored, and nothing pins a
   `protoc` version.
-- `build.rs` runs `connectrpc-build`:
-  `files(["proto/template/v1/template.proto"]).includes(["proto/"]).include_file("_connectrpc.rs")
-  .emit_descriptor_set("template.fds.bin")`. It **shells out to `protoc`** (`PROTOC` env wins, else the
-  binary on `PATH`) and emits `cargo:rerun-if-changed` for its inputs, so the script re-runs when the
-  proto changes — not on every build.
+- `build.rs` runs `connectrpc-build` over that one file: it emits the generated service module and
+  `template.fds.bin`, the descriptor set reflection publishes. It **shells out to `protoc`** (`PROTOC`
+  env wins, else the binary on `PATH`) and emits `cargo:rerun-if-changed` for its inputs, so the script
+  re-runs when the proto changes — not on every build.
 - Integrating a new proto means editing `build.rs` (`files`/`includes`), the mount in `app/rpc/mod.rs`
   and the service impl in `app/rpc/service.rs`.
 - Generated code is pulled in once: `pub mod proto { connectrpc::include_generated!(); }`
@@ -93,18 +86,9 @@ cargo doc --document-private-items
   `0000_init.sql` — the test harness replays `toasty/migrations/*.sql` in filename order
   (`tests/common/scratch.rs`).
 - New models: edit `domain/model/`, register in `app_models!`, regenerate, then `./manage migrate`.
-
-```bash
-./manage migrate                              # toasty-cli migration apply
-./manage fresh                                # migration reset --skip-migrations, then apply
-./manage migration-generate --name <name>     # migration generate (interactive on a detected drop)
-./manage init                                 # idempotent RBAC seed
-./manage create-superuser [-u <name> -p <pw>]
-./manage dev                                  # exec cargo watch -x "run --bin axum-template"
-```
-
 - `manage` is a Bash script that `cd`s to the repository root first (so `Toasty.toml` resolves) and
-  dispatches the subcommands above; an unknown subcommand is a shell error.
+  dispatches one subcommand per function — the script is the list of them; an unknown subcommand is a
+  shell error.
 - **TTY constraints**: `./manage fresh` always asks for confirmation (`dialoguer::Confirm`, not skipped
   by `--skip-migrations`) and `create-superuser` prompts when `-u`/`-p` are omitted — both need a
   terminal. In a non-interactive environment use `./manage migrate` plus explicit SQL instead.
@@ -119,24 +103,21 @@ No subcommand starts the server (`app::serve()`). **Any** subcommand goes throug
 connects to PostgreSQL and ensures the media directory. So `config` and `perms` also need a reachable
 database, and every subcommand has that side effect.
 
-| Command | Effect |
-|---|---|
-| `config` | prints the whole effective `ConfigData` as JSON — including `auth.jwt.secret` in clear text |
-| `init` | idempotent RBAC seed (skips roles that exist), prints a created/skipped report |
-| `create-superuser [-u|--username] [-p|--password]` | prompts (hidden input) when omitted |
-| `role list` | `name - description [perm,…]` |
-| `role create -n|--name <name> [-d|--description] [-p|--perms "a,b"]` | comma-separated permission codes; an unknown code is a `malformed_request` |
-| `role delete -n|--name <name>` | `not_found` when the role is missing |
-| `perms` | every `Perm` as `code - description` (no DB read, but still boots) |
+`axum-template --help` (and `… role create --help`) is the flag reference: each subcommand and argument
+carries its clap help from `cli/command.rs`, so the list is not repeated here. What clap cannot say:
 
-There is no `--version` flag (the clap command has no `version` attribute).
+- `config` prints the whole effective `ConfigData` as JSON — `auth.jwt.secret` in clear text included.
+- `init` is an idempotent RBAC seed (existing roles are skipped) and prints a created/skipped report.
+- `role create` takes comma-separated permission codes; an unknown code is a `malformed_request`, and
+  `role delete` a missing name a `not_found`.
+- `perms` prints every `Perm` as `code - description`; it reads no table, but booting still needs the
+  database.
+- There is no `--version` flag (the clap command has no `version` attribute).
 
 ## Local state, ignore rules
 
-- With `AXUM_TEMPLATE_LOCAL_MODE` set or a `.axum-template/` directory present, config, `.env`, logs and
-  media all live under `.axum-template/`; otherwise under the XDG config/data dirs
-  (`~/.config/axum-template`, `~/.local/share/axum-template`). See `docs/configuration.md` for the exact
-  resolution order and its caveats.
+- The config/data directory is resolved once, before anything else runs; `docs/configuration.md` owns
+  the branches and the caveats. What matters here is that logs and media follow that same directory.
 - `.gitignore` covers `Cargo.lock`, `target/`, `debug/`, `**/*.rs.bk`, `.env`, `config/local.toml`,
   `*.db`, `logs/` and `.axum-template`.
 - Known residue, do not mistake for current behavior: the repository-root `logs/` directory (the code

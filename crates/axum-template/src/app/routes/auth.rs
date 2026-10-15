@@ -17,6 +17,7 @@ use crate::{
     error::{AppError, ErrorCode},
 };
 
+/// Logs in and sets the session cookie.
 #[utoipa::path(post, path="/login", request_body = LoginReq, responses(
     ErrorResponses,
     (status = 200, body = AuthStateResp),
@@ -39,7 +40,8 @@ pub async fn login(
     Ok((jar, Json(AuthStateResp::from(outcome.user))))
 }
 
-#[utoipa::path(post, path="/logout", responses(
+/// Ends this session and clears the cookie.
+#[utoipa::path(post, path="/logout", security(("sessionCookie" = [])), responses(
     ErrorResponses,
     (status = 200, body = MessageResp),
 ))]
@@ -55,7 +57,7 @@ pub async fn logout(
     Ok((jar, Json(MessageResp::new("Logged out"))))
 }
 
-#[utoipa::path(get, path="/me", responses(
+#[utoipa::path(get, path="/me", security(("sessionCookie" = []), ("bearer" = [])), responses(
     ErrorResponses,
     (status = 200, body = AuthStateResp),
 ))]
@@ -68,7 +70,9 @@ pub async fn me(
     Ok(Json(AuthStateResp::from(auth_user)))
 }
 
-#[utoipa::path(put, path="/password", request_body = ChangePasswordReq, responses(
+/// Changes the caller's password: the old one is required, every other session and refresh token of
+/// the account is revoked, and a session caller gets a rotated cookie in this response.
+#[utoipa::path(put, path="/password", security(("sessionCookie" = []), ("bearer" = [])), request_body = ChangePasswordReq, responses(
     ErrorResponses,
     (status = 200, body = MessageResp),
 ))]
@@ -102,7 +106,7 @@ pub async fn change_password(
     }
 }
 
-#[utoipa::path(get, path="/sessions", responses(
+#[utoipa::path(get, path="/sessions", security(("sessionCookie" = [])), responses(
     ErrorResponses,
     (status = 200, body = SessionListResp),
 ))]
@@ -119,7 +123,8 @@ pub async fn sessions(
     Ok(Json(SessionListResp { sessions }))
 }
 
-#[utoipa::path(delete, path="/sessions/{id}", params(
+/// Revokes one of this account's sessions; revoking the calling session also clears its cookie.
+#[utoipa::path(delete, path="/sessions/{id}", security(("sessionCookie" = [])), params(
     ("id" = SessionId, Path)
 ), responses(
     ErrorResponses,
@@ -142,7 +147,8 @@ pub async fn revoke_session(
     Ok((jar, Json(MessageResp::new("Session revoked"))))
 }
 
-#[utoipa::path(post, path="/sessions/revoke-others", responses(
+/// Revokes every session of this account except the calling one.
+#[utoipa::path(post, path="/sessions/revoke-others", security(("sessionCookie" = [])), responses(
     ErrorResponses,
     (status = 200, body = MessageResp),
 ))]
