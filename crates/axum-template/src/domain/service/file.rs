@@ -359,5 +359,12 @@ impl FileService {
 }
 
 fn sha256_hex(data: &[u8]) -> String {
-    format!("{:x}", sha2::Sha256::digest(data))
+    use std::fmt::Write as _;
+
+    let digest = sha2::Sha256::digest(data);
+    let mut hex = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        write!(hex, "{byte:02x}").expect("writing to a String cannot fail");
+    }
+    hex
 }

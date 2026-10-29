@@ -6,7 +6,7 @@ resolver = "3"
 anyhow = "1"
 async-trait = "0.1"
 config = { version = "0.15", features = ["toml", "convert-case"] }
-dirs = "6"
+dirs = "7"
 dotenvy = "0.15"
 ipnet = "2"
 serde = { version = "1", features = ["derive"] }
@@ -17,7 +17,7 @@ derive_more = { version = "2", features = ["full"] }
 thiserror = "2"
 tokio = { version = "1", features = ["full"] }
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
-sha2 = "0.10"
+sha2 = "0.11"
 tokio-util = { version = "0.7", features = ["io"] }
 validator = { version = "0.21", features = ["derive"] }
 
@@ -28,7 +28,7 @@ axum = { version = "0.8", features = ["ws", "macros", "multipart"] }
 axum-extra = { version = "0.12", features = ["cookie"] }
 cookie = "0.18"
 tower = "0.5"
-tower-http = { version = "0.6", features = ["cors", "trace", "fs", "timeout"] }
+tower-http = { version = "0.7", features = ["cors", "trace", "fs", "timeout"] }
 jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 rust-embed = { version = "8.5", features = ["axum"] }
 mime_guess = "2.0"
@@ -48,8 +48,8 @@ buffa = "0.9"
 buffa-types = { version = "0.9", features = ["jiff", "json"] }
 
 # Database
-toasty = { version = "0.10", features = ["jiff", "postgresql", "serde"] }
-toasty-cli = "0.10"
+toasty = { version = "0.11", features = ["jiff", "postgresql", "serde"] }
+toasty-cli = "0.11"
 
 # Auth & Crypto
 argon2 = "0.6"
@@ -70,15 +70,15 @@ wtransport = "0.7"
 
 # Tests
 tokio-tungstenite = "0.30"
-base64 = "0.22"
+base64 = "0.23"
 futures-util = "0.3"
 tokio-postgres = "0.7"
 
 # Documentation
-utoipa = { version = "5", features = ["axum_extras", "uuid"] }
-utoipa-axum = "0.2"
-utoipa-scalar = { version = "0.3", features = ["axum"] }
-utoipa-swagger-ui = { version = "9", features = ["axum"] }
+utoipa = { version = "6", features = ["axum_extras", "uuid"] }
+utoipa-axum = "0.3"
+utoipa-scalar = { version = "0.4", features = ["axum"] }
+utoipa-swagger-ui = { version = "10", features = ["axum"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

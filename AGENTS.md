@@ -14,7 +14,7 @@ truth; a line in any of these files that contradicts it is a bug in the file.
 
 ## Project Overview
 
-Rust 2024 (nightly) + Axum 0.8 + Toasty 0.10 (PostgreSQL) reference web API template — one workspace
+Rust 2024 (nightly) + Axum 0.8 + Toasty 0.11 (PostgreSQL) reference web API template — one workspace
 member, `crates/axum-template`, one library plus two binaries:
 
 | Binary | Entry point | Role |
@@ -243,9 +243,9 @@ rather than expecting `./manage migrate` to fix it. Why, and the rest of the mec
 - **Build needs `protoc`** on `PATH` (`PROTOC` overrides): `build.rs` compiles `proto/` through
   `connectrpc-build` into `OUT_DIR` plus `template.fds.bin`, the descriptor set gRPC reflection
   publishes. The script re-runs when the proto changes, not on every build.
-- **Key dependencies**: `tokio` (multi-thread), `axum` 0.8 (`ws`, `macros`, `multipart`), `toasty` 0.10
-  (+`toasty-cli` 0.10 as a *runtime* dependency, because the migration CLI parses `Toasty.toml` relative
-  to the CWD), `connectrpc`/`buffa` for the RPC surface, `utoipa` 5 (+`-axum`/`-scalar`/`-swagger-ui`),
+- **Key dependencies**: `tokio` (multi-thread), `axum` 0.8 (`ws`, `macros`, `multipart`), `toasty` 0.11
+  (+`toasty-cli` 0.11 as a *runtime* dependency, because the migration CLI parses `Toasty.toml` relative
+  to the CWD), `connectrpc`/`buffa` for the RPC surface, `utoipa` 6 (+`-axum`/`-scalar`/`-swagger-ui`),
   `validator`, `jsonwebtoken` 11 (`rust_crypto`), `argon2`, `image` 0.25 with a **hand-picked codec list**
   (`jpeg`, `png`, `webp`, `avif` — the accepted upload types come from it), `jiff`, `clap` 4, `config`
   0.15 (`convert-case`), `rust-embed`, `mime_guess`, `ipnet`, `dotenvy`.

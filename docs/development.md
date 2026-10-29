@@ -52,12 +52,12 @@ renders the docs the code carries itself.
 
 | Crate | Why it matters |
 |---|---|
-| `toasty` 0.10 (`jiff`, `postgresql`, `serde`) | the model layer; models are registered in `app_models!` (`domain/db/mod.rs:11-22`) which both `init_db` and `toasty-cli` consume |
-| `toasty-cli` 0.10 | a **runtime** dependency: `Config::load()` reads `Toasty.toml` relative to the process CWD, which is why migrations must be launched from the repository root (that is what `manage` does) |
+| `toasty` 0.11 (`jiff`, `postgresql`, `serde`) | the model layer; models are registered in `app_models!` (`domain/db/mod.rs:11-22`) which both `init_db` and `toasty-cli` consume |
+| `toasty-cli` 0.11 | a **runtime** dependency: `Config::load()` reads `Toasty.toml` relative to the process CWD, which is why migrations must be launched from the repository root (that is what `manage` does) |
 | `axum` 0.8 (`ws`, `macros`, `multipart`) + `axum-extra` (cookie) | routing, sockets, multipart; the cookie extractor is `CookieJar` |
 | `connectrpc` 0.9 (+`-build`, `-reflection`), `buffa`, `buffa-types` | the RPC surface; `-reflection` is `default-features = false` in the workspace |
 | `image` 0.25 (`default-features = false`, codecs `jpeg`, `png`, `webp`, `avif`) | **the accepted upload/thumbnail types come from this list** — adding a format means editing it |
-| `utoipa` 5 (+`-axum`, `-scalar`, `-swagger-ui`) | `OpenApiRouter` is the routing primitive here, so route modules are `utoipa_axum` routers |
+| `utoipa` 6 (+`-axum`, `-scalar`, `-swagger-ui`) | `OpenApiRouter` is the routing primitive here, so route modules are `utoipa_axum` routers |
 | `config` 0.15 (`toml`, `convert-case`) | the `__` separator plus Kebab conversion behind `AXUM_TEMPLATE__SECTION__KEY` |
 | `jsonwebtoken` 11 (`rust_crypto`) | non-default backend; access tokens are HS256 |
 | `rust-embed` 8.5 (`axum`) | embeds `static/`; the folder must exist at compile time and stay non-empty. Without the `debug-embed` feature a debug build reads from disk, so SPA edits need no rebuild |

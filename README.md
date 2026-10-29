@@ -1,6 +1,6 @@
 # Axum Template
 
-A Rust reference API service you copy from: Axum 0.8 and Toasty 0.10 on PostgreSQL, nightly
+A Rust reference API service you copy from: Axum 0.8 and Toasty 0.11 on PostgreSQL, nightly
 toolchain. It is a template, not a framework — take the patterns the target service needs and delete
 the rest.
 
