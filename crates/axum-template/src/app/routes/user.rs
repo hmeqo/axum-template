@@ -100,7 +100,6 @@ pub async fn update_username(
     Ok(Json(response))
 }
 
-// 与 `/api/auth/password` 相对：这条针对别人，故不验旧密码。
 /// Sets another user's password without the old one, and revokes the target's sessions and refresh
 /// tokens.
 #[utoipa::path(post, path="/{id}/password/reset", params(
